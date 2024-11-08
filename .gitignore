@@ -131,3 +131,6 @@ dist
 
 # Transpiled JS
 /build/
+
+# Media content
+/media/

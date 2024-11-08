@@ -20,11 +20,10 @@ export class LinkedList<T>
 
     private traverse(node : LinkedListNode<T>, map : (data : T) => void) : void
     {
-        console.log(node.next != null);
+        map(node.data);
         if (node.next !== undefined) {
             this.traverse(node.next, map);
         } 
-        map(node.data);
     }
 
     add(data : T) : void
