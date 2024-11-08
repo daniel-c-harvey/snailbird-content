@@ -2,6 +2,18 @@ export interface Image {
     imageBase64 : string
 }
 
+export interface ImageBinary {
+    buffer: Buffer;
+    size: number;
+    extension: string;
+}
+
+export interface ImageBase64 {
+    imageCode : string;
+    size: number;
+    extension: string;
+}
+
 // Map of common image extensions to MIME types
 // const MIME_TYPES: Record<string, string> = {
 //     '.jpg': 'image/jpeg',
