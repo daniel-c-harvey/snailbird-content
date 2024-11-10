@@ -1,10 +1,13 @@
-export interface Image {
-    imageBase64 : string
-}
+// export interface Image {
+//     imageBase64 : string
+// }
 
-export interface ImageBinary {
+export interface MediaBinary {
     buffer: Buffer;
     size: number;
+}
+
+export interface ImageBinary extends MediaBinary {
     extension: string;
 }
 
