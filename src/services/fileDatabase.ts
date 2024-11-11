@@ -5,14 +5,37 @@ import { MediaBinary, ImageBinary } from '../models/mediaModel.js';
 import { LinkedList } from '../utils/adt.js';
 import { Buffer } from 'buffer';
 
-export class FileDatabase 
+
+function loadIndex(path : string) : VaultIndex | undefined
 {
+    // load the index file, and throw an error if there isn't one
+    let indexCT = fs.open(path, 'r+');
+    // todo decrypt
+    return { id : 0, uriKey : "img", fileHashes : new Set<string>() };
+}
+
+abstract class IndexDirectory {
     rootPath : string;
+    index : VaultIndex;
+
+    constructor(rootPath : string) {
+        this.rootPath = rootPath;
+        let index = loadIndex(rootPath);
+        if (index !== undefined) {
+            this.index = index;
+        } else {
+            throw Error("Cannot open indexed directory.");
+        }
+    }
+}
+
+export class FileDatabase extends IndexDirectory
+{
     vaults : Map<string, DirectoryVault>;
     
     constructor(rootPath : string)
     {
-        this.rootPath = rootPath;
+        super(rootPath);
         this.vaults = new Map<string, DirectoryVault>();
         
         // todo load vaults
@@ -21,7 +44,7 @@ export class FileDatabase
         this.vaults.set(imgVault.index.uriKey, imgVault);
     }
 
-    loadVaultResource(vaultKey : string, path : string): Promise<MediaBinary> | undefined {
+    loadResource(vaultKey : string, path : string): Promise<MediaBinary> | undefined {
         let dvault : DirectoryVault | undefined = this.vaults.get(vaultKey);
         if (dvault !== undefined)
         {
@@ -35,14 +58,11 @@ export class FileDatabase
     }
 }
 
-class DirectoryVault {
-    rootPath : string;
-    index : VaultIndex;
+class DirectoryVault extends IndexDirectory {
     vault : Vault;
 
     constructor(rootPath : string, vault : Vault) {
-        this.rootPath = rootPath;
-        this.index = loadIndex();
+        super(rootPath);
         this.vault = vault;
     }
     
@@ -52,12 +72,6 @@ interface VaultIndex {
     id : number;
     uriKey : string;
     fileHashes : Set<string>;
-}
-
-function loadIndex() : VaultIndex
-{
-    // load the index file, and throw an error if there isn't one
-    return { id : 0, uriKey : "img", fileHashes : new Set<string>() };
 }
 
 abstract class Vault {

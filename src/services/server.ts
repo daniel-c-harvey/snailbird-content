@@ -23,7 +23,7 @@ export class Server {
     }
 
     async sendImg(res: Express.Response) {
-        let image: MediaBinary | undefined = await this.fdb.loadVaultResource("img", "muskX.png");
+        let image: MediaBinary | undefined = await this.fdb.loadResource("img", "muskX.png");
         // let image: ImageBinary = await this.fdb.getImageAsync("./media/test.png");
         if (image != undefined && Buffer.isBuffer(image.buffer)) 
         {
