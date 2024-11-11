@@ -15,11 +15,11 @@ export class Server {
 
         this.fdb = new FileDatabase('./media');
 
-        this.server.get('/img', (_, res) => {
-            this.sendImg(res);
-        })
+        // this.server.get('/img', (_, res) => {
+        //     this.sendImg(res);
+        // })
 
-        this.server.listen(3000);
+        this.server.listen(3030);
     }
 
     async sendImg(res: Express.Response) {

@@ -5,13 +5,27 @@ import { MediaBinary, ImageBinary } from '../models/mediaModel.js';
 import { LinkedList } from '../utils/adt.js';
 import { Buffer } from 'buffer';
 
+function loadIndex(vaultKey : string) {
+    return loadIndex(vaultKey).then((vault) => {
+        
+    })
+}
 
-function loadIndex(path : string) : VaultIndex | undefined
+async function loadIndexAsync(vaultKey : string) : Promise<VaultIndex | undefined>
 {
-    // load the index file, and throw an error if there isn't one
-    let indexCT = fs.open(path, 'r+');
-    // todo decrypt
-    return { id : 0, uriKey : "img", fileHashes : new Set<string>() };
+    let indexFH = undefined;
+    
+    try { indexFH = fs.open(vaultKey + '/index', 'r+'); } 
+    catch (e : unknown) { }
+
+    return new Promise((resolve, reject) => {
+        // load the index file, and throw an error if there isn't one
+        if (indexFH !== undefined) {
+            resolve({ id : 0, uriKey : vaultKey, fileHashes : new Set<string>() });;
+        } else {
+            reject(undefined);
+        }
+    });
 }
 
 abstract class IndexDirectory {
@@ -20,7 +34,7 @@ abstract class IndexDirectory {
 
     constructor(rootPath : string) {
         this.rootPath = rootPath;
-        let index = loadIndex(rootPath);
+        var index = loadIndex(rootPath);
         if (index !== undefined) {
             this.index = index;
         } else {
@@ -40,8 +54,8 @@ export class FileDatabase extends IndexDirectory
         
         // todo load vaults
         // open vault behavior that validates the vault index before loading the vault into the set.
-        let imgVault = new DirectoryVault("img", new ImageVault());
-        this.vaults.set(imgVault.index.uriKey, imgVault);
+        this.loadVault('img', new ImageVault());
+        // this.loadVault('aud', new AudioVault());
     }
 
     loadResource(vaultKey : string, path : string): Promise<MediaBinary> | undefined {
@@ -55,6 +69,13 @@ export class FileDatabase extends IndexDirectory
             }
         }
         return undefined;
+    }
+
+    loadVault(vaultKey : string, vault : Vault) {
+        let dvault = new DirectoryVault(vaultKey, vault);
+        if (dvault !== undefined) {
+            this.vaults.set(this.rootPath + '/' + dvault.index.uriKey, dvault);
+        }
     }
 }
 
