@@ -1,45 +1,32 @@
-import { promises as fs, ReadStream } from 'fs';
-import { FileHandle } from 'fs/promises';
 import * as Path from 'path';
-import { MediaBinary, ImageBinary } from '../models/mediaModel.js';
-import { LinkedList } from '../utils/adt.js';
-import { Buffer } from 'buffer';
-
-function loadIndex(vaultKey : string) {
-    return loadIndex(vaultKey).then((vault) => {
-        
-    })
-}
-
-async function loadIndexAsync(vaultKey : string) : Promise<VaultIndex | undefined>
-{
-    let indexFH = undefined;
-    
-    try { indexFH = fs.open(vaultKey + '/index', 'r+'); } 
-    catch (e : unknown) { }
-
-    return new Promise((resolve, reject) => {
-        // load the index file, and throw an error if there isn't one
-        if (indexFH !== undefined) {
-            resolve({ id : 0, uriKey : vaultKey, fileHashes : new Set<string>() });;
-        } else {
-            reject(undefined);
-        }
-    });
-}
+import { MediaBinary, ImageBinary } from '../models/mediaModel.js';;
+import { streamFile } from '../utils/sys.js';
 
 abstract class IndexDirectory {
     rootPath : string;
-    index : VaultIndex;
+    index : VaultIndex | undefined;
 
-    constructor(rootPath : string) {
+    protected constructor(rootPath : string) {
         this.rootPath = rootPath;
-        var index = loadIndex(rootPath);
-        if (index !== undefined) {
-            this.index = index;
-        } else {
-            throw Error("Cannot open indexed directory.");
+    }
+
+    async loadIndexAsync(vaultKey : string) : Promise<VaultIndex | undefined>
+    {        
+        try { 
+            let index = await streamFile(this.rootPath + '/' + vaultKey);
+        } 
+        catch (e : unknown) {  
+            console.log(`Creating Index for ${vaultKey}.`);
         }
+
+        return new Promise(resolve => {
+            // load the index file, and throw an error if there isn't one
+            let x;
+            if (indexFH !== undefined) {
+                x = { id : 0, uriKey : vaultKey, fileHashes : new Set<string>() };
+            }
+            resolve(x);
+        });
     }
 }
 
@@ -47,15 +34,30 @@ export class FileDatabase extends IndexDirectory
 {
     vaults : Map<string, DirectoryVault>;
     
-    constructor(rootPath : string)
+    static async from(rootPath : string) : Promise<FileDatabase> {
+        let db = new FileDatabase(rootPath);
+        await db.initVaults();
+        return db;
+    }
+
+    protected constructor(rootPath : string)
     {
         super(rootPath);
         this.vaults = new Map<string, DirectoryVault>();
-        
-        // todo load vaults
-        // open vault behavior that validates the vault index before loading the vault into the set.
-        this.loadVault('img', new ImageVault());
+    }
+
+    protected async initVaults() {
+        this.index = await this.loadIndexAsync(this.rootPath);
+
+        await this.initVault('img', new ImageVault());
         // this.loadVault('aud', new AudioVault());
+    }
+
+    protected async initVault(vaultKey : string, vault : Vault) {
+        let dvault = await DirectoryVault.from(vaultKey, vault);
+        if (dvault.index !== undefined) {
+            this.vaults.set(dvault.index.uriKey, dvault);
+        }
     }
 
     loadResource(vaultKey : string, path : string): Promise<MediaBinary> | undefined {
@@ -70,23 +72,21 @@ export class FileDatabase extends IndexDirectory
         }
         return undefined;
     }
-
-    loadVault(vaultKey : string, vault : Vault) {
-        let dvault = new DirectoryVault(vaultKey, vault);
-        if (dvault !== undefined) {
-            this.vaults.set(this.rootPath + '/' + dvault.index.uriKey, dvault);
-        }
-    }
 }
 
 class DirectoryVault extends IndexDirectory {
     vault : Vault;
 
-    constructor(rootPath : string, vault : Vault) {
+    static async from(rootPath : string, vault : Vault) : Promise<DirectoryVault> {
+        let dv = new DirectoryVault(rootPath, vault);
+        await dv.loadIndexAsync(rootPath);
+        return new Promise<DirectoryVault>(resolve => resolve(dv));
+    }
+
+    private constructor(rootPath : string, vault : Vault) {
         super(rootPath);
         this.vault = vault;
     }
-    
 }
 
 interface VaultIndex {
@@ -97,46 +97,7 @@ interface VaultIndex {
 
 abstract class Vault {
     async getMediaAsync(mediaPath: string): Promise<MediaBinary> {
-        try {        
-            const fileHandle : FileHandle = await fs.open(mediaPath, 'r');
-            const fr : ReadStream = fileHandle.createReadStream();
-    
-            return new Promise<MediaBinary>((resolve) =>
-            {
-                let size = 0;
-                const chunks = new LinkedList<Buffer>();
-    
-                fr.on('data', (chunk : Buffer) => {
-                    chunks.add(chunk);
-                });
-    
-                fr.on('end', () => {
-                    // close the stream;
-                    fr.close();
-    
-                    // calculate the total size in bytes of all chunks
-                    chunks.apply( (data : Buffer) => size += data.byteLength );
-                    
-                    // allocate and copy the chunk buffers
-                    let offset = 0;
-                    let bytes = Buffer.alloc(size);
-                    chunks.apply((data : Buffer) => {
-                        var index;
-                        for (index = 0; index < data.byteLength; index++) {
-                            bytes[offset + index] = data[index];
-                        }
-                        offset += data.byteLength;
-                    });
-
-                    resolve({
-                        buffer: bytes,
-                        size: bytes.length
-                    });
-                });
-            });
-        } catch (error) {
-            throw new Error(`Failed to load image: ${(error as Error).message}`);
-        }
+        return streamFile(mediaPath);
     }
 }
 

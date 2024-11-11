@@ -13,4 +13,8 @@ import { Server } from './services/server.js';
 
 // console.log(y);
 
-const x = new Server();
+try {
+    await Server.build();
+} catch (error) {
+    console.log(error)
+}

@@ -7,29 +7,36 @@ import * as Express from 'express';
 import { Buffer } from 'buffer';
 
 export class Server {
-    server : Express.Application;
-    fdb : FileDatabase;
+    expressServer : Express.Application;
+    fileDB : FileDatabase | undefined;
 
-    constructor() {
-        this.server = express();
+    static async build() : Promise<Server> {
+        let server = new Server();
+        server.fileDB = await FileDatabase.from('./media');
 
-        this.fdb = new FileDatabase('./media');
+        // Register METHOD Handlers
+        server.expressServer.get('/img', (_, res) => {
+            server.sendImg(res);
+        });
 
-        // this.server.get('/img', (_, res) => {
-        //     this.sendImg(res);
-        // })
-
-        this.server.listen(3030);
+        server.expressServer.listen(3030);
+        return server;
+    }
+    
+    private constructor() {
+        this.expressServer = express();
     }
 
     async sendImg(res: Express.Response) {
-        let image: MediaBinary | undefined = await this.fdb.loadResource("img", "muskX.png");
-        // let image: ImageBinary = await this.fdb.getImageAsync("./media/test.png");
-        if (image != undefined && Buffer.isBuffer(image.buffer)) 
-        {
-            res.type('png');
-            res.send(image.buffer);
-            res.end(null, 'binary');
+        if (this.fileDB !== undefined) {
+            let image = await this.fileDB.loadResource("img", "muskX.png");
+            // let image: ImageBinary = await this.fdb.getImageAsync("./media/test.png");
+            if (image !== undefined && Buffer.isBuffer(image.buffer)) 
+            {
+                res.type('png');
+                res.send(image.buffer);
+                res.end(null, 'binary');
+            }
         }
     }
 }
