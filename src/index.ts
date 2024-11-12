@@ -1,5 +1,5 @@
 // import { ImageBinary } from './models/imageModel.js';
-import { ImageBinary } from './models/imageModel.js';
+import { ImageBinary } from './models/mediaModel.js';
 import * as X from './services/fileDatabase.js'
 import { Server } from './services/server.js';
 // import * as Sys from './utils/sys'
@@ -13,4 +13,8 @@ import { Server } from './services/server.js';
 
 // console.log(y);
 
-const x = new Server();
+try {
+    await Server.build();
+} catch (error) {
+    console.log(error)
+}
