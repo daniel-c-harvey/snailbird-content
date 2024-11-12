@@ -43,7 +43,7 @@ abstract class IndexDirectory {
 
 export class FileDatabase extends IndexDirectory
 {
-    vaults : Map<string, DirectoryVault>;
+    private vaults : Map<string, DirectoryVault>;
     
     static async from(rootPath : string) : Promise<FileDatabase> {
         let db = new FileDatabase(rootPath);
@@ -73,7 +73,7 @@ export class FileDatabase extends IndexDirectory
         }
     }
 
-    loadResource(vaultKey : string, path : string): Promise<MediaBinary> | undefined {
+    async loadResource(vaultKey : string, path : string): Promise<MediaBinary | undefined> {
         let dvault : DirectoryVault | undefined = this.vaults.get(vaultKey);
 
         if (dvault !== undefined)
@@ -82,10 +82,25 @@ export class FileDatabase extends IndexDirectory
 
             if (vault !== undefined)
             {
-                return vault.getMediaAsync(this.rootPath + '/' + dvault.rootPath + '/' + path);
+                return await vault.getMediaAsync(this.rootPath + '/' + dvault.rootPath + '/' + path);
             }
         }
         return undefined;
+    }
+
+    async registerResource(vaultKey : string, media : MediaBinary) : Promise<boolean> {
+        let dvault = this.vaults.get(vaultKey);
+
+        if (dvault !== undefined) {
+            try {
+                // implement directory vault registration
+                await putObject(this.rootPath + '/' + vaultKey, media); 
+                
+                return true;
+            }
+            catch (e) { }
+        }
+        return false;
     }
 }
 
