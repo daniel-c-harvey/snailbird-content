@@ -2,8 +2,9 @@
 import test from 'node:test';
 import assert from 'node:assert';
 import { promises as fs } from 'node:fs';
-import { FileDatabase, MediaVault } from '../src/services/fileDatabase.js';
+import { FileDatabase } from '../src/services/fileDatabase.js';
 import { vaultExists } from '../src/utils/fileDatabase.utils.js';
+import { MediaVault } from '../src/services/vault.js';
 
 const fileDatabaseRootPath = './test/media';
 
