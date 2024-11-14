@@ -1,7 +1,7 @@
 import path, { extname } from 'path';
 import { MediaBinary, ImageBinary } from '../models/mediaModel.js';
 import { VaultIndex} from '../models/fileDatabase.models.js'
-import { fetchFile, fetchObject, makeVaultDirectory, putObject, vaultExists } from '../utils/fileDatabase.utils.js';
+import { fetchFile, fetchObject, makeVaultDirectory, putFile, putObject, vaultExists } from '../utils/fileDatabase.utils.js';
 
 abstract class IndexDirectory {
     rootPath : string;
@@ -175,7 +175,9 @@ abstract class Vault {
         return fetchFile(mediaPath);
     }
 
-    async getMediaAsync(media : MediaBinary) : Promise<MediaBinary>
+    async addMediaAsync(mediaPath: string, media : MediaBinary) : Promise<void> {
+        return putFile(mediaPath, media.buffer)
+    }
 }
 
 export class MediaVault extends Vault {
