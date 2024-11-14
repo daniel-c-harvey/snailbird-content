@@ -1,6 +1,7 @@
-import { extname } from 'path';
+import path, { extname } from 'path';
 import { MediaBinary, ImageBinary } from '../models/mediaModel.js';
-import { fetchFile, fetchObject, makeVaultDirectory, putObject, vaultDirectoryExists } from './fileDatabase.system.js';
+import { VaultIndex} from '../models/fileDatabase.models.js'
+import { fetchFile, fetchObject, makeVaultDirectory, putObject, vaultExists } from '../utils/fileDatabase.utils.js';
 
 abstract class IndexDirectory {
     rootPath : string;
@@ -10,34 +11,50 @@ abstract class IndexDirectory {
         this.rootPath = rootPath;
     }
 
-    // Attempt to load the index for the specified vault.  
+    // Attempt to load the index for the directory.  
     // If loading the index fails for any reason, a new index is created.
     async loadIndexAsync() : Promise<VaultIndex | undefined>
-    {        
-        const path = this.rootPath + '/index';
+    {
         let index : VaultIndex;
 
         try { 
-            index = await fetchObject(path);
+            index = await fetchObject(this.rootPath + '/index');
         } 
         catch (e : unknown) { // Failed to open existing index
-            console.log(`Creating Index for ${this.rootPath}.`);
-            
-            index = { 
-                uriKey : this.rootPath, 
-                fileHashes : new Set<string>()
-            };
-
-            if (! await vaultDirectoryExists(this.rootPath)) {
-                await makeVaultDirectory(this.rootPath);
-            } 
-            
-            await putObject(path, index);
+            index = await this.createIndex();
         }
 
-        return new Promise(resolve => {
-            resolve(index);
-        });
+        if (index != undefined) {
+            this.index = index;
+        }
+
+        return index;
+    }
+
+    
+
+    protected async createIndex() : Promise<VaultIndex> {
+        
+        const index = {
+            uriKey: this.getKey(),
+            fileKeys: new Set<string>()
+        };
+
+        if (!await vaultExists(this.rootPath)) {
+            await makeVaultDirectory(this.rootPath);
+        }
+
+        await this.writeIndex(this.rootPath, index);
+
+        return index;
+    }
+
+    protected async writeIndex(path: string, index: VaultIndex) {
+        await putObject(path + '/index', index);
+    }
+
+    protected getKey() : string {
+        return path.basename(this.rootPath);
     }
 }
 
@@ -60,8 +77,41 @@ export class FileDatabase extends IndexDirectory
     protected async initVaults() {
         this.index = await this.loadIndexAsync();
 
-        await this.initVault('img', new ImageVault());
+        if (this.index !== undefined) {
+            for (const vaultKey of this.index.fileKeys) {
+                await this.initVault(vaultKey, new MediaVault());
+            }
+        }
+
         // this.loadVault('aud', new AudioVault());
+    }
+
+    hasVault(vaultKey : string) : boolean {
+        return this.vaults.has(vaultKey)
+    }
+
+    getVault(vaultKey : string) : DirectoryVault | undefined {
+        return this.vaults.get(vaultKey);
+    }
+
+    async createVault(vaultKey : string, vault : Vault) {
+        try {
+            let path = this.rootPath + '/' + vaultKey;
+
+            let dvault = await DirectoryVault.from(path, vault);
+            this.vaults.set(vaultKey, dvault);
+            await this.addToIndex(vaultKey);
+        } catch (e) {
+            console.log("Could not create vault.");
+            throw e;
+        }
+    }
+
+    private async addToIndex(vaultKey: string) {
+        if (this.index !== undefined) {
+            this.index.fileKeys.add(vaultKey);
+            await this.writeIndex(this.rootPath, this.index);
+        }
     }
 
     protected async initVault(vaultKey : string, vault : Vault) {
@@ -117,20 +167,18 @@ class DirectoryVault extends IndexDirectory {
         super(rootPath);
         this.vault = vault;
     }
-}
 
-interface VaultIndex {
-    uriKey : string;
-    fileHashes : Set<string>;
 }
 
 abstract class Vault {
     async getMediaAsync(mediaPath: string): Promise<MediaBinary> {
         return fetchFile(mediaPath);
     }
+
+    async getMediaAsync(media : MediaBinary) : Promise<MediaBinary>
 }
 
-export class ImageVault extends Vault {
+export class MediaVault extends Vault {
     override async getMediaAsync(mediaPath: string): Promise<ImageBinary> {
         const extension = extname(mediaPath);
         let mediaBinary = await super.getMediaAsync(mediaPath);

@@ -1,8 +1,10 @@
 import { Buffer } from 'buffer';
 import { promises as fs, ReadStream, StatsFs, WriteStream } from 'fs';
 import { FileHandle } from 'fs/promises';
-import { MediaBinary } from '../models/mediaModel.js';;
-import { LinkedList } from '../utils/adt.js';
+import { BinaryLike, createHash, Hash } from 'crypto';
+import { MediaBinary } from '../models/mediaModel.js';
+import { LinkedList } from './adt.js';
+import { serialize, deserialize } from 'v8';
 
 export async function fetchFile(mediaPath : string) : Promise<MediaBinary> {
     try {        
@@ -62,6 +64,7 @@ export async function putFile(mediaPath : string, buffer : Buffer) {
                     index += chunkSize;
                 } else {
                     fileWriter.close();
+                    fileHandle.close();
                 }
             }
          }
@@ -80,19 +83,19 @@ export async function putFile(mediaPath : string, buffer : Buffer) {
 export async function fetchObject(path : string) : Promise<any> {
     let bytes = await fetchFile(path);
     if (bytes.size > 0) {
-        return JSON.parse((new TextDecoder()).decode(bytes.buffer));
+        return deserialize(bytes.buffer);
     }
 }
 
-export async function putObject(path : string, obj : object) {
-    await putFile(path, Buffer.from((new TextEncoder()).encode(JSON.stringify(obj))));
+export async function putObject(path : string, obj : any) {
+    await putFile(path, Buffer.from(serialize(obj)));
 }
 
-export async function vaultDirectoryExists(path : string) : Promise<boolean> {
-    let x : StatsFs;
+export async function vaultExists(path : string) : Promise<boolean> {
+    let x;
 
     try {
-        x = await fs.statfs(path);
+        x = await fetchObject(path + '/index');
     }
     catch (e) {
         return false;
@@ -101,6 +104,6 @@ export async function vaultDirectoryExists(path : string) : Promise<boolean> {
     return (x !== undefined);
 }
 
-export async function makeVaultDirectory(path : string) : Promise<void> {
+export async function makeVaultDirectory(path : string) {
     await fs.mkdir(path);
 }
