@@ -30,47 +30,46 @@ export default async function runFileDatabaseTests() {
             if (fdbQ !== undefined) {
                 let fdb : FileDatabase = fdbQ;
 
-                assert.notStrictEqual(fdb.index, undefined);
-
-                if (fdb.index !== undefined) {
-
-                    assert.strictEqual(fdb.index.entryKeys.size, 0);
+                assert.strictEqual(fdb.index.entryKeys.size, 0, 'Index is not empty');
+                
+                await t.test('Can add a new vault for images', async (t) => {
+                    await fdb.createVault('img', new MediaVault());
                     
-                    await t.test('Can add a new vault for images', async (t) => {
-                        await fdb.createVault('img', new MediaVault());
-                        
-                        assert.strictEqual(fdb.index.entryKeys.size, 1);
-                        assert.strictEqual(await vaultExists(fdb.rootPath + '/img'), true);
-                    });
+                    assert.strictEqual(fdb.index.entryKeys.size, 1, 'Index does not contain a single element');
+                    assert.strictEqual(await vaultExists(fdb.rootPath + '/img'), true, 'Index does not contain the img entry');
+                });
+                
+                await t.test('Can add new media to image vault', async (t) => {
+                    let dvault = fdb.getVault('img');
                     
-                    await t.test('Can add new media to image vault', async (t) => {
-                        let dvault = fdb?.getVault('img');
+                    assert.notStrictEqual(dvault, undefined, 'Vault undefined');
+                    
+                    if (dvault !== undefined) {
+                        let mediaName  = 'test.png';
+                        let x = await getMediaBinary(mediaName);
+                        dvault.addEntry(mediaName, x);
                         
-                        assert.notStrictEqual(dvault, undefined, 'File database undefined');
-                        
-                        if (dvault !== undefined) {
-                            let mediaName  = 'test.png';
-                            let x = await getMediaBinary(mediaName);
-                            dvault.addEntry(mediaName, x);
-                            
-                        }
-                    });
-                }
+                    }
+                });
+            
             }
         });
             
             await t.test('File database can be reloaded from secondary memory', async (t) => {
                 try {
-                    fdb = await FileDatabase.from(fileDatabaseRootPath);
+                    fdbQ = await FileDatabase.from(fileDatabaseRootPath);
                 } catch (e) {
                     success = false;
                 }
                 
-                assertFileDatabaseDefined(success, fdb);
-                
-                assert.strictEqual(fdb?.index?.entryKeys.size, 1, 'Index count is 1');
-                
-                assertVaultExists(fdb, 'img');
+                assertFileDatabaseDefined(success, fdbQ);
+
+                if (fdbQ !== undefined) {
+                    let fdb = fdbQ;
+                    
+                    assert.strictEqual(fdb.index.entryKeys.size, 1, 'Index count is 1');
+                    assertVaultExists(fdb, 'img');
+                }
             })
             
         

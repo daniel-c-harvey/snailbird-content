@@ -1,19 +1,25 @@
 import { extname } from "path";
-import { IndexDirectory } from "./indexDirectory.js";
-import { fetchFile, putFile } from "../utils/fileDatabase.utils.js";
+import { IndexDirectory, IndexFactory } from "./indexDirectory.js";
 import { ImageBinary, MediaBinary } from "../models/mediaModel.js";
+import { VaultIndex } from "../models/fileDatabase.models.js";
+import { fetchFile, putFile } from "../utils/fileDatabase.utils.js";
 
 export class DirectoryVault extends IndexDirectory {
     vault : Vault;
 
-    static async from(rootPath : string, vault : Vault) : Promise<DirectoryVault> {
-        let dv = new DirectoryVault(rootPath, vault);
-        await dv.loadIndexAsync();
-        return new Promise<DirectoryVault>(resolve => resolve(dv));
+    static async from(rootPath : string, vault : Vault) : Promise<DirectoryVault | undefined> {
+        const factory = new IndexFactory(rootPath);
+        let index = await factory.buildIndex();
+
+        if (index !== undefined) {
+            return new DirectoryVault(rootPath, index, vault);
+        }
+         
+        return undefined;
     }
 
-    private constructor(rootPath : string, vault : Vault) {
-        super(rootPath);
+    private constructor(rootPath : string, index : VaultIndex, vault : Vault) {
+        super(rootPath, index);
         this.vault = vault;
     }
     
