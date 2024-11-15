@@ -23,12 +23,19 @@ export class FileDatabase extends IndexDirectory
         this.index = await this.loadIndexAsync();
 
         if (this.index !== undefined) {
-            for (const vaultKey of this.index.fileKeys) {
+            for (const vaultKey of this.index.entryKeys) {
                 await this.initVault(vaultKey, new MediaVault());
             }
         }
-
-        // this.loadVault('aud', new AudioVault());
+    }
+    
+    protected async initVault(vaultKey : string, vault : Vault) {
+        const path = this.rootPath + '/' + vaultKey;
+        let dvault = await DirectoryVault.from(path, vault);
+        
+        if (dvault.index !== undefined) {
+            this.vaults.set(dvault.index.vaultKey, dvault);
+        }
     }
 
     hasVault(vaultKey : string) : boolean {
@@ -52,21 +59,7 @@ export class FileDatabase extends IndexDirectory
         }
     }
 
-    private async addToIndex(vaultKey: string) {
-        if (this.index !== undefined) {
-            this.index.fileKeys.add(vaultKey);
-            await this.writeIndex(this.rootPath, this.index);
-        }
-    }
-
-    protected async initVault(vaultKey : string, vault : Vault) {
-        const path = this.rootPath + '/' + vaultKey;
-        let dvault = await DirectoryVault.from(path, vault);
-        
-        if (dvault.index !== undefined) {
-            this.vaults.set(dvault.index.uriKey, dvault);
-        }
-    }
+    
 
     async loadResource(vaultKey : string, path : string): Promise<MediaBinary | undefined> {
         let dvault : DirectoryVault | undefined = this.vaults.get(vaultKey);

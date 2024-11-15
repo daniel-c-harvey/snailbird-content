@@ -38,8 +38,8 @@ export abstract class IndexDirectory {
     protected async createIndex() : Promise<VaultIndex> {
         
         const index = {
-            uriKey: this.getKey(),
-            fileKeys: new Set<string>()
+            vaultKey: this.getKey(),
+            entryKeys: new Set<string>()
         };
 
         if (!await vaultExists(this.rootPath)) {

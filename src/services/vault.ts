@@ -16,6 +16,11 @@ export class DirectoryVault extends IndexDirectory {
         super(rootPath);
         this.vault = vault;
     }
+    
+    async addEntry(entryKey : string, media : MediaBinary) : Promise<void> {
+        this.vault.addMediaAsync(`${this.rootPath}/${entryKey}`, media);
+        this.index?.entryKeys.add(entryKey);
+    }
 
 }
 
@@ -25,7 +30,7 @@ export abstract class Vault {
     }
 
     async addMediaAsync(mediaPath: string, media : MediaBinary) : Promise<void> {
-        return putFile(mediaPath, media.buffer)
+        return putFile(mediaPath, media.buffer);
     }
 }
 
