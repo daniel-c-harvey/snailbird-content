@@ -1,79 +1,74 @@
-import { extname } from 'path';
-import { MediaBinary, ImageBinary } from '../models/mediaModel.js';
-import { fetchFile, fetchObject, makeVaultDirectory, putObject, vaultDirectoryExists } from './fileDatabase.system.js';
-
-abstract class IndexDirectory {
-    rootPath : string;
-    index : VaultIndex | undefined;
-
-    protected constructor(rootPath : string) {
-        this.rootPath = rootPath;
-    }
-
-    // Attempt to load the index for the specified vault.  
-    // If loading the index fails for any reason, a new index is created.
-    async loadIndexAsync() : Promise<VaultIndex | undefined>
-    {        
-        const path = this.rootPath + '/index';
-        let index : VaultIndex;
-
-        try { 
-            index = await fetchObject(path);
-        } 
-        catch (e : unknown) { // Failed to open existing index
-            console.log(`Creating Index for ${this.rootPath}.`);
-            
-            index = { 
-                uriKey : this.rootPath, 
-                fileHashes : new Set<string>()
-            };
-
-            if (! await vaultDirectoryExists(this.rootPath)) {
-                await makeVaultDirectory(this.rootPath);
-            } 
-            
-            await putObject(path, index);
-        }
-
-        return new Promise(resolve => {
-            resolve(index);
-        });
-    }
-}
+import { MediaBinary } from '../models/mediaModel.js';
+import { IndexDirectory, IndexFactory } from './indexDirectory.js';
+import { DirectoryVault, MediaVault, Vault } from './vault.js';
+import { VaultIndex } from '../models/fileDatabase.models.js';
+import { putObject } from '../utils/fileDatabase.utils.js';
 
 export class FileDatabase extends IndexDirectory
 {
-    vaults : Map<string, DirectoryVault>;
+    private vaults : Map<string, DirectoryVault>;
     
-    static async from(rootPath : string) : Promise<FileDatabase> {
-        let db = new FileDatabase(rootPath);
-        await db.initVaults();
-        return db;
+    static async from(rootPath : string) : Promise<FileDatabase | undefined> {
+        const factory = new IndexFactory(rootPath);
+        let index = await factory.buildIndex();
+        
+        if (index !== undefined) {
+            let db = new FileDatabase(rootPath, index);
+            await db.initVaults();
+            return db;
+        }
+
+        return undefined;
     }
 
-    protected constructor(rootPath : string)
+    protected constructor(rootPath : string, index : VaultIndex)
     {
-        super(rootPath);
+        super(rootPath, index);
         this.vaults = new Map<string, DirectoryVault>();
     }
 
     protected async initVaults() {
-        this.index = await this.loadIndexAsync();
-
-        await this.initVault('img', new ImageVault());
-        // this.loadVault('aud', new AudioVault());
+        if (this.index !== undefined) {
+            for (const vaultKey of this.index.entryKeys) {
+                await this.initVault(vaultKey, new MediaVault());
+            }
+        }
     }
-
+    
     protected async initVault(vaultKey : string, vault : Vault) {
         const path = this.rootPath + '/' + vaultKey;
         let dvault = await DirectoryVault.from(path, vault);
         
-        if (dvault.index !== undefined) {
-            this.vaults.set(dvault.index.uriKey, dvault);
+        if (dvault?.index !== undefined) {
+            this.vaults.set(dvault.index.vaultKey, dvault);
         }
     }
 
-    loadResource(vaultKey : string, path : string): Promise<MediaBinary> | undefined {
+    hasVault(vaultKey : string) : boolean {
+        return this.vaults.has(vaultKey)
+    }
+
+    getVault(vaultKey : string) : DirectoryVault | undefined {
+        return this.vaults.get(vaultKey);
+    }
+
+    async createVault(vaultKey : string, vault : Vault) {
+        try {
+            let path = this.rootPath + '/' + vaultKey;
+            let dvault = await DirectoryVault.from(path, vault);
+
+            if (dvault !== undefined) {
+                this.vaults.set(vaultKey, dvault);
+                await this.addToIndex(vaultKey);
+            }
+        } catch (e) {
+            throw e;
+        }
+    }
+
+    
+
+    async loadResource(vaultKey : string, path : string): Promise<MediaBinary | undefined> {
         let dvault : DirectoryVault | undefined = this.vaults.get(vaultKey);
 
         if (dvault !== undefined)
@@ -82,51 +77,24 @@ export class FileDatabase extends IndexDirectory
 
             if (vault !== undefined)
             {
-                return vault.getMediaAsync(this.rootPath + '/' + dvault.rootPath + '/' + path);
+                return await vault.getMediaAsync(this.rootPath + '/' + dvault.rootPath + '/' + path);
             }
         }
         return undefined;
     }
-}
 
-class DirectoryVault extends IndexDirectory {
-    vault : Vault;
+    async registerResource(vaultKey : string, media : MediaBinary) : Promise<boolean> {
+        let dvault = this.vaults.get(vaultKey);
 
-    static async from(rootPath : string, vault : Vault) : Promise<DirectoryVault> {
-        let dv = new DirectoryVault(rootPath, vault);
-        await dv.loadIndexAsync();
-        return new Promise<DirectoryVault>(resolve => resolve(dv));
-    }
-
-    private constructor(rootPath : string, vault : Vault) {
-        super(rootPath);
-        this.vault = vault;
-    }
-}
-
-interface VaultIndex {
-    uriKey : string;
-    fileHashes : Set<string>;
-}
-
-abstract class Vault {
-    async getMediaAsync(mediaPath: string): Promise<MediaBinary> {
-        return fetchFile(mediaPath);
-    }
-}
-
-export class ImageVault extends Vault {
-    override async getMediaAsync(mediaPath: string): Promise<ImageBinary> {
-        const extension = extname(mediaPath);
-        let mediaBinary = await super.getMediaAsync(mediaPath);
-
-        return new Promise<ImageBinary>(
-            resolve => resolve(
-            {
-                buffer : mediaBinary.buffer,
-                size : mediaBinary.size,
-                extension : extension
+        if (dvault !== undefined) {
+            try {
+                // implement directory vault registration
+                await putObject(this.rootPath + '/' + vaultKey, media); 
+                
+                return true;
             }
-        ));
+            catch (e) { }
+        }
+        return false;
     }
 }

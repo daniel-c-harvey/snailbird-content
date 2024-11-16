@@ -134,3 +134,6 @@ dist
 
 # Media content
 /media/**/*
+
+/test/media/
+/test/media/**/*/

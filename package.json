@@ -2,16 +2,17 @@
   "name": "snailbird-content",
   "version": "0.0.1",
   "description": "Content server for media for snailbird",
-  "main": "./build/index.js",
+  "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
-    "run": "node ./build",
-    "go": "tsc && node ./build",
-    "debug": "tsc && node --inspect ./build"
+    "run": "node ./build/src",
+    "go": "npm run build && npm run run",
+    "debug": "npm run build && node --inspect ./build/src",
+    "test": "npm run build && node --test ./build/test/index.test.js",
+    "testi": "npm run build && node --test --inspect ./build/test/index.test.js"
   },
   "files": [
-    "./build/"
+    "./build/**/*"
   ],
   "author": "Daniel Harvey",
   "type": "module",
