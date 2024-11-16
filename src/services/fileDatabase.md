@@ -2,11 +2,23 @@
     classDiagram
 
     %% Abstract Class - IndexDirectory
-    class IndexDirectory {
+    class AbstractIndex {
         <<Abstract>>
         - rootPath : string
+        - writeIndex() : void
+    }
+
+    class IndexFactory {
+        + buildIndex() : Promise~VaultIndex~
+        - loadIndexAsync() : Promise~VaultIndex~
+        - createIndex() : Promise~VaultIndex~
+    }
+
+    %% Abstract Class - IndexDirectory
+    class IndexDirectory {
+        <<Abstract>>
         - index : VaultIndex
-        + loadIndexAsync() : Promise~VaultIndex~
+        - addToIndex(vaultKey : string)
     }
 
     %% Class - FileDatabase
@@ -15,6 +27,9 @@
         + from(rootPath : string) : Promise~FileDatabase~
         - initVaults() : Promise~void~
         - initVault(vaultKey : string, vault : Vault) : Promise~void~
+        + hasVault(vaultKey : string) : boolean
+        + getVault(vaultKey : string) : DirectoryVault
+        + createVault(vaultKey : string, vault : Vault) : void
         + loadResource(vaultKey : string, path : string) : Promise~MediaBinary~
         + registerResource(vaultKey : string, media : MediaBinary) : Promise~boolean~
     }
@@ -55,13 +70,15 @@
     }
 
     %% Relationships
+    AbstractIndex <|-- IndexDirectory : Inheritance
+    AbstractIndex <|-- IndexFactory : Inheritance
     IndexDirectory <|-- FileDatabase : Inheritance
     IndexDirectory <|-- DirectoryVault : Inheritance
-    FileDatabase "1" --> "0..*" DirectoryVault : contains
-    DirectoryVault "1" --> "1" Vault : contains
+    FileDatabase "1" --o "1..*" DirectoryVault : Aggregation
+    DirectoryVault "1" --* "1" Vault : Composition
     Vault <|-- ImageVault : Inheritance
     IndexDirectory --> VaultIndex : uses
     Vault --> MediaBinary : returns
     ImageVault --> ImageBinary : returns
-    ImageBinary --|> MediaBinary : extends
+    ImageBinary --|> MediaBinary : Inheritance
 ```

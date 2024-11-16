@@ -28,6 +28,15 @@ export class DirectoryVault extends IndexDirectory {
         this.index?.entryKeys.add(entryKey);
     }
 
+    async getEntry(entryKey : string) : Promise<MediaBinary | undefined> {
+        if (this.index.entryKeys.has(entryKey)) {
+            let bmedia : MediaBinary = await fetchFile(this.rootPath + '/' + entryKey);
+            return bmedia;
+        }
+
+        return undefined;
+    }
+
 }
 
 export abstract class Vault {
