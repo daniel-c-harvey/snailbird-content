@@ -9,42 +9,36 @@ import { finished } from 'stream/promises';
 export async function fetchFile(mediaPath : string) : Promise<MediaBinary> {
     let fileHandle : FileHandle;
     let fileReader : ReadStream;
+
+    fileHandle = await fs.open(mediaPath, 'r')
+    fileReader = fileHandle.createReadStream({highWaterMark : 64 * 1024});
     
-    try {
-        fileHandle = await fs.open(mediaPath, 'r')
-        fileReader = fileHandle.createReadStream({highWaterMark : 64 * 1024});
-        
-        let size = 0;
-        const chunks = new LinkedList<Buffer>();
-        
-        fileReader.on('data', (chunk : Buffer) => {
-            chunks.add(chunk);
-            size += chunk.byteLength;
-        });
+    let size = 0;
+    const chunks = new LinkedList<Buffer>();
+    
+    fileReader.on('data', (chunk : Buffer) => {
+        chunks.add(chunk);
+        size += chunk.byteLength;
+    });
 
-        await finished(fileReader);
+    await finished(fileReader);
 
-        // Close the stream & Handle
-        fileReader.close(); 
-        await fileHandle.close();
+    // Close the stream & Handle
+    fileReader.close(); 
+    await fileHandle.close();
 
-        // allocate and copy the chunk buffers
-        let offset = 0;
-        const bytes = Buffer.alloc(size);
-        chunks.apply((data: Buffer) => {
-            data.copy(bytes, offset);
-            offset += data.byteLength;
-        });
+    // allocate and copy the chunk buffers
+    let offset = 0;
+    const bytes = Buffer.alloc(size);
+    chunks.apply((data: Buffer) => {
+        data.copy(bytes, offset);
+        offset += data.byteLength;
+    });
 
-        return {
-            buffer: bytes,
-            size: bytes.length
-        };
-
-    } catch (error) {
-        console.error(`Failed to load media: ${(error as Error).message}`);
-        throw error;
-    }      
+    return {
+        buffer: bytes,
+        size: bytes.length
+    };   
 }
 
 export async function putFile(mediaPath : string, buffer : Buffer) {
