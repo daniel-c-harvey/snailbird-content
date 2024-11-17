@@ -77,8 +77,8 @@ export async function putFile(mediaPath : string, buffer : Buffer) {
 }
 
 export async function fetchObject(path : string) : Promise<any> {
-    return fetchFile(path)
-        .then(bytes => deserialize(bytes.buffer));
+    let bytes = await fetchFile(path);
+    return deserialize(bytes.buffer);
 }
     
 export async function putObject(path : string, obj : any) {
@@ -86,9 +86,8 @@ export async function putObject(path : string, obj : any) {
 }
 
 export async function vaultExists(path : string) : Promise<boolean> {
-    return fetchObject(path + '/index')
-        .then(index => index !== undefined,
-              _ => false);
+    let index = await fetchObject(path + '/index');
+    return index !== undefined;
 }
 
 export async function makeVaultDirectory(path : string) {
