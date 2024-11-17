@@ -64,33 +64,24 @@ export class FileDatabase extends IndexDirectory
         } catch (e) {
             throw e;
         }
-    }
+    }    
 
-    
-
-    async loadResource(vaultKey : string, path : string): Promise<MediaBinary | undefined> {
+    async loadResource(vaultKey : string, entryKey : string): Promise<MediaBinary | undefined> {
         let dvault : DirectoryVault | undefined = this.vaults.get(vaultKey);
 
         if (dvault !== undefined)
         {
-            let vault : Vault | undefined = dvault.vault;
-
-            if (vault !== undefined)
-            {
-                return await vault.getMediaAsync(this.rootPath + '/' + dvault.rootPath + '/' + path);
-            }
+            return await dvault.vault.getMediaAsync(dvault.rootPath + '/' + entryKey);
         }
         return undefined;
     }
 
-    async registerResource(vaultKey : string, media : MediaBinary) : Promise<boolean> {
+    async registerResource(vaultKey : string, mediaKey: string, media : MediaBinary) : Promise<boolean> {
         let dvault = this.vaults.get(vaultKey);
 
         if (dvault !== undefined) {
             try {
-                // implement directory vault registration
-                await putObject(this.rootPath + '/' + vaultKey, media); 
-                
+                await dvault.addEntry(mediaKey, media);                
                 return true;
             }
             catch (e) { }

@@ -24,8 +24,8 @@ export class DirectoryVault extends IndexDirectory {
     }
     
     async addEntry(entryKey : string, media : MediaBinary) : Promise<void> {
-        this.vault.addMediaAsync(`${this.rootPath}/${entryKey}`, media);
-        this.index?.entryKeys.add(entryKey);
+        await this.addToIndex(entryKey);
+        await this.vault.addMediaAsync(`${this.rootPath}/${entryKey}`, media);
     }
 
     async getEntry(entryKey : string) : Promise<MediaBinary | undefined> {
@@ -41,11 +41,11 @@ export class DirectoryVault extends IndexDirectory {
 
 export abstract class Vault {
     async getMediaAsync(mediaPath: string): Promise<MediaBinary> {
-        return fetchFile(mediaPath);
+        return await fetchFile(mediaPath);
     }
 
     async addMediaAsync(mediaPath: string, media : MediaBinary) : Promise<void> {
-        return putFile(mediaPath, media.buffer);
+        return await putFile(mediaPath, media.buffer);
     }
 }
 
