@@ -54,13 +54,10 @@ export class MediaVault extends Vault {
         const extension = extname(mediaPath);
         let mediaBinary = await super.getMediaAsync(mediaPath);
 
-        return new Promise<ImageBinary>(
-            resolve => resolve(
-            {
-                buffer : mediaBinary.buffer,
-                size : mediaBinary.size,
-                extension : extension
-            }
-        ));
+        return {
+            buffer : mediaBinary.buffer,
+            size : mediaBinary.size,
+            extension : extension
+        }
     }
 }

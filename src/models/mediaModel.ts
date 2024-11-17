@@ -1,6 +1,3 @@
-// export interface Image {
-//     imageBase64 : string
-// }
 
 export interface MediaBinaryDto {
     buffer : Uint8Array;

@@ -43,7 +43,7 @@ export default async function runFileDatabaseTests() {
                 let mediaName = 'test.png';
 
                 await t.test('Can add new media to image vault', async (t) => {
-                    // Prepare
+                    // Arrange
                     let image = await getMediaBinary(mediaName);
 
                     // Act
@@ -55,7 +55,7 @@ export default async function runFileDatabaseTests() {
                     assert.strictEqual(dvault?.index.entryKeys.has(mediaName), true, 'Added image is not in the index');                    
                 });
 
-                await t.test('Can load reource from vault', async (t) => {
+                await t.test('Can load valid reource from vault', async (t) => {
                     let dvault = fdb.getVault('img');
 
                     assert.notStrictEqual(dvault, undefined, 'Vault is undefined');

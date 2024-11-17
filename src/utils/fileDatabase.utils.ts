@@ -4,65 +4,47 @@ import { FileHandle } from 'fs/promises';
 import { MediaBinary } from '../models/mediaModel.js';
 import { LinkedList } from './adt.js';
 import { serialize, deserialize } from 'v8';
+import { finished } from 'stream/promises';
 
 export async function fetchFile(mediaPath : string) : Promise<MediaBinary> {
-    return new Promise<MediaBinary>((resolve, reject) => {
-        let fileReader : ReadStream;
+    let fileHandle : FileHandle;
+    let fileReader : ReadStream;
+    
+    try {
+        fileHandle = await fs.open(mediaPath, 'r')
+        fileReader = fileHandle.createReadStream({highWaterMark : 64 * 1024});
         
-        try {
-            fs.open(mediaPath, 'r')
-                .then(
-                    (handle) => {
-                        fileReader = handle.createReadStream();
-                        
-                        let size = 0;
-                        const chunks = new LinkedList<Buffer>();
+        let size = 0;
+        const chunks = new LinkedList<Buffer>();
+        
+        fileReader.on('data', (chunk : Buffer) => {
+            chunks.add(chunk);
+            size += chunk.byteLength;
+        });
 
-                        fileReader.on('error', (error) => {
-                            handle.close();
-                            fileReader.close();
-                            reject(error);
-                        });
+        await finished(fileReader);
 
-                        fileReader.on('data', (chunk : Buffer) => {
-                            chunks.add(chunk);
-                        });
+        // Close the stream & Handle
+        fileReader.close(); 
+        await fileHandle.close();
 
-                        fileReader.on('end', () => {
-                            try {    
-                                // close the stream;
-                                fileReader.close();
-                                handle.close();
-                                
-                                // calculate the total size in bytes of all chunks
-                                chunks.apply( (data : Buffer) => size += data.byteLength );
-                                
-                                // allocate and copy the chunk buffers
-                                let offset = 0;
-                                const bytes = Buffer.alloc(size);
-                                chunks.apply((data : Buffer) => {
-                                    data.copy(bytes, offset);
-                                    offset += data.byteLength;
-                                });
-                                
-                                resolve({
-                                    buffer: bytes,
-                                    size: bytes.length
-                                });
-                        } catch (error) {
-                            reject(error);
-                        }
-                    });    
-                })
-                .catch((error) => {
-                    console.error(`Failed to load media: ${(error as Error).message}`);
-                    reject(error);
-                });
-        } catch (error) {
-            console.error(`Failed to load media: ${(error as Error).message}`);
-            reject(error);
-        }      
-    });
+        // allocate and copy the chunk buffers
+        let offset = 0;
+        const bytes = Buffer.alloc(size);
+        chunks.apply((data: Buffer) => {
+            data.copy(bytes, offset);
+            offset += data.byteLength;
+        });
+
+        return {
+            buffer: bytes,
+            size: bytes.length
+        };
+
+    } catch (error) {
+        console.error(`Failed to load media: ${(error as Error).message}`);
+        throw error;
+    }      
 }
 
 export async function putFile(mediaPath : string, buffer : Buffer) {
@@ -80,7 +62,7 @@ export async function putFile(mediaPath : string, buffer : Buffer) {
                     index += chunkSize;
                 } else {
                     fileWriter.close();
-                    fileHandle.close();
+                    await fileHandle.close();
                 }
             }
          }
@@ -95,17 +77,8 @@ export async function putFile(mediaPath : string, buffer : Buffer) {
 }
 
 export async function fetchObject(path : string) : Promise<any> {
-    return new Promise<any>((resolve, reject) => {
-        try {
-            fetchFile(path)
-            .then(
-                bytes => resolve(deserialize(bytes.buffer)),
-                error => reject(error)
-            );
-        } catch (error) { 
-            reject(error);
-        }
-    });
+    return fetchFile(path)
+        .then(bytes => deserialize(bytes.buffer));
 }
     
 export async function putObject(path : string, obj : any) {
@@ -113,16 +86,9 @@ export async function putObject(path : string, obj : any) {
 }
 
 export async function vaultExists(path : string) : Promise<boolean> {
-    let x;
-
-    try {
-        x = await fetchObject(path + '/index');
-    }
-    catch (e) {
-        return false;
-    }
-
-    return (x !== undefined);
+    return fetchObject(path + '/index')
+        .then(index => index !== undefined,
+              _ => false);
 }
 
 export async function makeVaultDirectory(path : string) {
