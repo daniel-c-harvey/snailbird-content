@@ -3,6 +3,7 @@ import { IndexDirectory, IndexFactory } from './indexDirectory.js';
 import { DirectoryVault, MediaVault, Vault } from './vault.js';
 import { VaultIndex } from '../models/fileDatabase.models.js';
 import { putObject } from '../utils/fileDatabase.utils.js';
+import { resolve } from 'path';
 
 export class FileDatabase extends IndexDirectory
 {
@@ -81,8 +82,9 @@ export class FileDatabase extends IndexDirectory
 
         if (dvault !== undefined) {
             try {
-                await dvault.addEntry(mediaKey, media);                
-                return true;
+                return dvault.addEntry(mediaKey, media)
+                .then(() => true,
+                      () => false)
             }
             catch (e) { }
         }

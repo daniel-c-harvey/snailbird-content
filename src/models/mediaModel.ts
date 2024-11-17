@@ -2,12 +2,17 @@
 //     imageBase64 : string
 // }
 
+export interface MediaBinaryDto {
+    buffer : Uint8Array;
+    size : number;
+}
+
 export class MediaBinary {
     buffer: Buffer;
     size: number;
 
-    constructor(buffer : Buffer, size : number) {
-        this.buffer = buffer;
+    constructor(buffer : Uint8Array, size : number) {
+        this.buffer = Buffer.from(buffer);
         this.size = size;
     }
 }
@@ -21,11 +26,11 @@ export class ImageBinary extends MediaBinary {
     }
 }
 
-export interface ImageBase64 {
-    imageCode : string;
-    size: number;
-    extension: string;
-}
+// export interface ImageBase64 {
+//     imageCode : string;
+//     size: number;
+//     extension: string;
+// }
 
 // Map of common image extensions to MIME types
 const MIME_TYPES: Record<string, string> = {

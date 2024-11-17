@@ -1,7 +1,7 @@
 
 import express, * as Express from 'express';
 import { Buffer } from 'buffer';
-import { MediaBinary } from '../models/mediaModel.js'
+import { MediaBinary, MediaBinaryDto } from '../models/mediaModel.js'
 import { FileDatabase } from './fileDatabase.js';
 import { MediaVault } from './vault.js';
 
@@ -44,13 +44,13 @@ export class Server {
 
         this.expressServer.post(`/${vaultKey}/:entryKey`, async (req, res) => {
             let key = req.params['entryKey'];
-            let obj = req.body;
+            let dto = req.body as MediaBinaryDto;
 
             if (key !== undefined && key !== '' && 
-                key.length > 0 && obj instanceof MediaBinary &&
-                obj.size > 0 && obj.buffer !== undefined
+                key.length > 0 && dto !== undefined &&
+                dto.size > 0 && dto.buffer !== undefined
             ) {
-                await this.respondPutImg(key, obj, res);
+                await this.respondPutImg(key, new MediaBinary(dto.buffer, dto.size), res);
             } else {
                 this.FourOhFour(res);
             }

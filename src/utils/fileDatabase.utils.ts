@@ -11,43 +11,44 @@ export async function fetchFile(mediaPath : string) : Promise<MediaBinary> {
         
         try {
             fs.open(mediaPath, 'r')
-                .then((handle) => {
-                    fileReader = handle.createReadStream();
-                    
-                    let size = 0;
-                    const chunks = new LinkedList<Buffer>();
+                .then(
+                    (handle) => {
+                        fileReader = handle.createReadStream();
+                        
+                        let size = 0;
+                        const chunks = new LinkedList<Buffer>();
 
-                    fileReader.on('error', (error) => {
-                        handle.close();
-                        fileReader.close();
-                        reject(error);
-                    });
-
-                    fileReader.on('data', (chunk : Buffer) => {
-                        chunks.add(chunk);
-                    });
-
-                    fileReader.on('end', () => {
-                        try {    
-                            // close the stream;
-                            fileReader.close();
+                        fileReader.on('error', (error) => {
                             handle.close();
-                            
-                            // calculate the total size in bytes of all chunks
-                            chunks.apply( (data : Buffer) => size += data.byteLength );
-                            
-                            // allocate and copy the chunk buffers
-                            let offset = 0;
-                            const bytes = Buffer.alloc(size);
-                            chunks.apply((data : Buffer) => {
-                                data.copy(bytes, offset);
-                                offset += data.byteLength;
-                            });
-                            
-                            resolve({
-                                buffer: bytes,
-                                size: bytes.length
-                            });
+                            fileReader.close();
+                            reject(error);
+                        });
+
+                        fileReader.on('data', (chunk : Buffer) => {
+                            chunks.add(chunk);
+                        });
+
+                        fileReader.on('end', () => {
+                            try {    
+                                // close the stream;
+                                fileReader.close();
+                                handle.close();
+                                
+                                // calculate the total size in bytes of all chunks
+                                chunks.apply( (data : Buffer) => size += data.byteLength );
+                                
+                                // allocate and copy the chunk buffers
+                                let offset = 0;
+                                const bytes = Buffer.alloc(size);
+                                chunks.apply((data : Buffer) => {
+                                    data.copy(bytes, offset);
+                                    offset += data.byteLength;
+                                });
+                                
+                                resolve({
+                                    buffer: bytes,
+                                    size: bytes.length
+                                });
                         } catch (error) {
                             reject(error);
                         }
@@ -71,10 +72,11 @@ export async function putFile(mediaPath : string, buffer : Buffer) {
         const chunkSize = 64 * 1024;
         
         let index = 0;
-        let write = async function () { 
+
+        let write = async function (buffer : Buffer) { 
             while (fileWriter.writable) {
                 if (index < buffer.length) {
-                    fileWriter.write(buffer.subarray(index, Math.min(index + chunkSize,buffer.length)));
+                    fileWriter.write(buffer.subarray(index, Math.min(index + chunkSize, buffer.length)));                    
                     index += chunkSize;
                 } else {
                     fileWriter.close();
@@ -83,11 +85,9 @@ export async function putFile(mediaPath : string, buffer : Buffer) {
             }
          }
 
-         fileWriter.on('drain', () => {
-            write();
-         });
+         fileWriter.on('drain', async () => await write(buffer));
 
-         write();
+         await write(buffer);
 
     } catch (error) {
         console.error(`Failed to write media: ${(error as Error).message}`);
