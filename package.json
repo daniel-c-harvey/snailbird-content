@@ -6,8 +6,9 @@
   "scripts": {
     "build": "tsc",
     "run": "node ./build/src",
+    "debug": "node --inspect ./build/src",
     "go": "npm run build && npm run run",
-    "debug": "npm run build && node --inspect ./build/src",
+    "bd": "npm run build && npm run debug",
     "test": "npm run build && node --test ./build/test/index.test.js",
     "testi": "npm run build && node --test --inspect ./build/test/index.test.js"
   },

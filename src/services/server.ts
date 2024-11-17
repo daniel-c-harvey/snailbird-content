@@ -35,6 +35,7 @@ export class Server {
             this.fileDB.createVault(vaultKey, new MediaVault());
         }
 
+        // the endpoint for VIEWING the media
         this.expressServer.get(`/${vaultKey}/:entryKey`, async (req, res) => {
             let key = req.params['entryKey'];
             if (key !== undefined && key !== '' && key.length > 0) {

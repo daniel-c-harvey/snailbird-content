@@ -137,3 +137,4 @@ dist
 
 /test/media/
 /test/media/**/*/
+/.secrets/**/*

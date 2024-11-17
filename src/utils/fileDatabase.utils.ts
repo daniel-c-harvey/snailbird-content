@@ -5,6 +5,7 @@ import { MediaBinary } from '../models/mediaModel.js';
 import { LinkedList } from './adt.js';
 import { serialize, deserialize } from 'v8';
 import { finished } from 'stream/promises';
+import { StringDecoder } from 'string_decoder';
 
 export async function fetchFile(mediaPath : string) : Promise<MediaBinary> {
     let fileHandle : FileHandle;
@@ -48,7 +49,7 @@ export async function putFile(mediaPath : string, buffer : Buffer) {
         const chunkSize = 64 * 1024;
         
         let index = 0;
-
+        
         let write = async function (buffer : Buffer) { 
             while (fileWriter.writable) {
                 if (index < buffer.length) {
@@ -59,20 +60,27 @@ export async function putFile(mediaPath : string, buffer : Buffer) {
                     await fileHandle.close();
                 }
             }
-         }
-
-         fileWriter.on('drain', async () => await write(buffer));
-
-         await write(buffer);
-
+        }
+        
+        fileWriter.on('drain', async () => await write(buffer));
+        
+        await write(buffer);
+        
     } catch (error) {
         console.error(`Failed to write media: ${(error as Error).message}`);
     }
 }
 
 export async function fetchObject(path : string) : Promise<any> {
-    let bytes = await fetchFile(path);
+    const bytes = await fetchFile(path);
     return deserialize(bytes.buffer);
+}
+
+export async function fetchJSON(path : string) : Promise<string> {
+    const UTF8Decoder = new StringDecoder('utf-8');
+    const bytes = await fetchFile(path);
+    const x = UTF8Decoder.end(bytes.buffer);
+    return x;
 }
     
 export async function putObject(path : string, obj : any) {
