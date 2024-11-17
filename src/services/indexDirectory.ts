@@ -28,21 +28,28 @@ export class IndexFactory extends AbstractIndex {
     }
 
     async buildIndex() : Promise<VaultIndex | undefined> {
-        return await this.loadIndexAsync();
+        return this.loadOrCreateIndex()
+                .then(
+                    index => index,
+                    _ => undefined
+                );
     }
 
-    protected async loadIndexAsync() : Promise<VaultIndex | undefined>
+    protected async loadOrCreateIndex() : Promise<VaultIndex>
     {
-        let index : VaultIndex;
-
-        try { 
-            index = await fetchObject(this.rootPath + '/index');
-        } 
-        catch (e : unknown) { // Failed to open existing index
-            index = await this.createIndex();
-        }
-
-        return index;
+        return new Promise<VaultIndex>((resolve, reject) => {
+            fetchObject(this.rootPath + '/index')
+            .then(
+                (index) => resolve(index),
+                (_) => {
+                    this.createIndex()
+                    .then(
+                        index => resolve(index),
+                        (error) => reject(error)
+                    )
+                }
+            );
+        });
     }
 
     protected async createIndex() : Promise<VaultIndex> {
@@ -70,9 +77,9 @@ export abstract class IndexDirectory extends AbstractIndex {
         this.index = index;
     }
 
-    protected async addToIndex(vaultKey: string) {
+    protected async addToIndex(entryKey: string) {
         if (this.index !== undefined) {
-            this.index.entryKeys.add(vaultKey);
+            this.index.entryKeys.add(entryKey);
             await this.writeIndex(this.index);
         }
     }

@@ -1,53 +1,67 @@
 import { Buffer } from 'buffer';
-import { promises as fs, ReadStream, StatsFs, WriteStream } from 'fs';
+import { promises as fs, ReadStream, WriteStream } from 'fs';
 import { FileHandle } from 'fs/promises';
-import { BinaryLike, createHash, Hash } from 'crypto';
 import { MediaBinary } from '../models/mediaModel.js';
 import { LinkedList } from './adt.js';
 import { serialize, deserialize } from 'v8';
 
 export async function fetchFile(mediaPath : string) : Promise<MediaBinary> {
-    try {        
-        const fileHandle : FileHandle = await fs.open(mediaPath, 'r');
-        const fileReader : ReadStream = fileHandle.createReadStream();
+    return new Promise<MediaBinary>((resolve, reject) => {
+        let fileReader : ReadStream;
+        
+        try {
+            fs.open(mediaPath, 'r')
+                .then((handle) => {
+                    fileReader = handle.createReadStream();
+                    
+                    let size = 0;
+                    const chunks = new LinkedList<Buffer>();
 
-        return new Promise<MediaBinary>((resolve) =>
-        {
-            let size = 0;
-            const chunks = new LinkedList<Buffer>();
+                    fileReader.on('error', (error) => {
+                        handle.close();
+                        fileReader.close();
+                        reject(error);
+                    });
 
-            fileReader.on('data', (chunk : Buffer) => {
-                chunks.add(chunk);
-            });
+                    fileReader.on('data', (chunk : Buffer) => {
+                        chunks.add(chunk);
+                    });
 
-            fileReader.on('end', () => {
-                // close the stream;
-                fileReader.close();
-                fileHandle.close();
-
-                // calculate the total size in bytes of all chunks
-                chunks.apply( (data : Buffer) => size += data.byteLength );
-                
-                // allocate and copy the chunk buffers
-                let offset = 0;
-                const bytes = Buffer.alloc(size);
-                chunks.apply((data : Buffer) => {
-                    var index;
-                    for (index = 0; index < data.byteLength; index++) {
-                        bytes[offset + index] = data[index];
-                    }
-                    offset += data.byteLength;
+                    fileReader.on('end', () => {
+                        try {    
+                            // close the stream;
+                            fileReader.close();
+                            handle.close();
+                            
+                            // calculate the total size in bytes of all chunks
+                            chunks.apply( (data : Buffer) => size += data.byteLength );
+                            
+                            // allocate and copy the chunk buffers
+                            let offset = 0;
+                            const bytes = Buffer.alloc(size);
+                            chunks.apply((data : Buffer) => {
+                                data.copy(bytes, offset);
+                                offset += data.byteLength;
+                            });
+                            
+                            resolve({
+                                buffer: bytes,
+                                size: bytes.length
+                            });
+                        } catch (error) {
+                            reject(error);
+                        }
+                    });    
+                })
+                .catch((error) => {
+                    console.error(`Failed to load media: ${(error as Error).message}`);
+                    reject(error);
                 });
-
-                resolve({
-                    buffer: bytes,
-                    size: bytes.length
-                });
-            });
-        });
-    } catch (error) {
-        throw new Error(`Failed to load media: ${(error as Error).message}`);
-    }
+        } catch (error) {
+            console.error(`Failed to load media: ${(error as Error).message}`);
+            reject(error);
+        }      
+    });
 }
 
 export async function putFile(mediaPath : string, buffer : Buffer) {
@@ -76,17 +90,24 @@ export async function putFile(mediaPath : string, buffer : Buffer) {
          write();
 
     } catch (error) {
-        throw new Error(`Failed to write media: ${(error as Error).message}`);
+        console.error(`Failed to write media: ${(error as Error).message}`);
     }
 }
 
 export async function fetchObject(path : string) : Promise<any> {
-    let bytes = await fetchFile(path);
-    if (bytes.size > 0) {
-        return deserialize(bytes.buffer);
-    }
+    return new Promise<any>((resolve, reject) => {
+        try {
+            fetchFile(path)
+            .then(
+                bytes => resolve(deserialize(bytes.buffer)),
+                error => reject(error)
+            );
+        } catch (error) { 
+            reject(error);
+        }
+    });
 }
-
+    
 export async function putObject(path : string, obj : any) {
     await putFile(path, Buffer.from(serialize(obj)));
 }

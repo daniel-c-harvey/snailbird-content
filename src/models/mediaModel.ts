@@ -2,15 +2,23 @@
 //     imageBase64 : string
 // }
 
-export interface MediaBinary {
+export class MediaBinary {
     buffer: Buffer;
     size: number;
 
-    
+    constructor(buffer : Buffer, size : number) {
+        this.buffer = buffer;
+        this.size = size;
+    }
 }
 
-export interface ImageBinary extends MediaBinary {
+export class ImageBinary extends MediaBinary {
     extension: string;
+
+    constructor(buffer : Buffer, size : number, extension : string) { 
+        super(buffer, size);
+        this.extension = extension;
+    }
 }
 
 export interface ImageBase64 {
