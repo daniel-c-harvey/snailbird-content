@@ -30,12 +30,12 @@ export default async function runFileDatabaseTests() {
             if (fdbQ !== undefined) {
                 let fdb: FileDatabase = fdbQ;
 
-                assert.strictEqual(fdb.index.entryKeys.size, 0, 'Index is not empty');
+                assert.strictEqual(fdb.getIndexSize(), 0, 'Index is not empty');
 
                 await t.test('Can add a new vault for images', async (t) => {
                     await fdb.createVault('img', new MediaVault());
 
-                    assert.strictEqual(fdb.index.entryKeys.size, 1, 'Index does not contain a single element');
+                    assert.strictEqual(fdb.getIndexSize(), 1, 'Index does not contain a single element');
                     assert.strictEqual(await vaultExists(fdb.rootPath + '/img'), true, 'Index does not contain the img entry');
                 });
 
@@ -52,7 +52,7 @@ export default async function runFileDatabaseTests() {
                     // Assert
                     let dvault = fdb.getVault('img');
                     assert.notStrictEqual(dvault, undefined, 'Vault undefined');
-                    assert.strictEqual(dvault?.index.entryKeys.has(mediaName), true, 'Added image is not in the index');                    
+                    assert.strictEqual(dvault?.hasIndexEntry(mediaName), true, 'Added image is not in the index');                    
                 });
 
                 await t.test('Can load valid reource from vault', async (t) => {
@@ -75,6 +75,32 @@ export default async function runFileDatabaseTests() {
                         }
                     }
                 });
+
+                await t.test('Deny access to nonexistent vault', async (t) => {
+                    let success = true;
+                    let vault;
+                    try {
+                        await fdb.loadResource('i-dont-exist', 'something.wmv');
+                        vault = fdb.getVault('i-dont-exist');
+                    } catch (error) {
+                        success = false;
+                    }
+                    
+                    assert.strictEqual(success, true, 'Exceptions occurred during access of invalid vault');
+                    
+                    assert.strictEqual(vault, undefined, 'Nonexistent vault returned data');
+                });
+
+                await t.test('Deny access to nonexistent resource', async (t) => {
+                    let success = true;
+                    try {
+                        await fdb.loadResource('img', 'i-dont-exist.jpeg');
+                    } catch (error) {
+                        success = false;
+                    }
+
+                    assert.strictEqual(success, true, 'Exceptions occurred during access of invalid resource');
+                });
             }
         });
 
@@ -90,7 +116,7 @@ export default async function runFileDatabaseTests() {
             if (fdbQ !== undefined) {
                 let fdb = fdbQ;
 
-                assert.strictEqual(fdb.index.entryKeys.size, 1, 'Index count is not 1');
+                assert.strictEqual(fdb.getIndexSize(), 1, 'Index count is not 1');
                 assertVaultExists(fdb, 'img');
                 // assert.strictEqual(fdb.has(img), true, 'Added image is not in the index');
             }
@@ -111,7 +137,7 @@ export default async function runFileDatabaseTests() {
     }
 
     function assertVaultExists(fdb: FileDatabase, vaultKey: string) {
-        assert.strictEqual(fdb.index.entryKeys.has(vaultKey), true, 'Vault not present in index');
+        assert.strictEqual(fdb.hasIndexEntry(vaultKey), true, 'Vault not present in index');
 
         assert.strictEqual(fdb.hasVault(vaultKey), true, 'Vault is not present in vault collection');
         assert.notStrictEqual(fdb.getVault(vaultKey), undefined, 'Vault is not present in vault collection');
