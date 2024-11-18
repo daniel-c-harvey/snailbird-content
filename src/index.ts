@@ -1,10 +1,11 @@
 import { Server } from './services/server.js';
-import { passSecret } from './utils/secrets.js';
+import { parseCommands } from './utils/params.js';
 
-// try {
-//     await Server.build();
-// } catch (error) {
-//     console.log(error)
-// }
+//* Command Parsing */
+const options = parseCommands();
 
-console.log(await passSecret('manager', ''));
+try {
+    await Server.build(options.port);
+} catch (error) {
+    console.log(error)
+}

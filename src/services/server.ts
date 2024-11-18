@@ -9,25 +9,25 @@ export class Server {
     expressServer : Express.Application;
     fileDB : FileDatabase;
 
-    static async build() : Promise<Server | undefined> {
+    static async build(port : number) : Promise<Server | undefined> {
         let fdb = await FileDatabase.from('./media');
 
         if (fdb !== undefined) {
-            return new Server(fdb);            
+            return new Server(fdb, port);            
         }
         return undefined;
     }
     
-    private constructor(fdb : FileDatabase) {
+    private constructor(fdb : FileDatabase, port : number) {
         this.fileDB = fdb;
         this.expressServer = express();
 
         this.expressServer.use(Express.json({strict : true}));
 
-        // Register METHOD Handlers
+        // Register METHOD Handlers for each vault
         this.registerVaultMethods('img');
         
-        this.expressServer.listen(36969);
+        this.expressServer.listen(port);
     }
 
     private registerVaultMethods(vaultKey : string) {
