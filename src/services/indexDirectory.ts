@@ -1,8 +1,8 @@
 import path from "path";
 import { VaultIndex } from "../models/fileDatabase.models.js";
-import { putObject } from "../utils/fileDatabase.utils.js";
-import { makeVaultDirectory } from "../utils/fileDatabase.utils.js";
-import { fetchObject } from "../utils/fileDatabase.utils.js";
+import { putObject } from "../utils/file.js";
+import { makeVaultDirectory } from "../utils/file.js";
+import { fetchObject } from "../utils/file.js";
 
 abstract class AbstractIndex {
     rootPath : string;

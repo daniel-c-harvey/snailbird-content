@@ -1,4 +1,4 @@
-import { fetchFile, fetchJSON } from "./fileDatabase.utils.js";
+import { fetchJSON } from "./file.js";
 
 interface APIKeySet {
     APIKeys : string[];
@@ -8,7 +8,7 @@ export async function passSecret(vaultKey : string, secretKey : string) : Promis
     try {
         let json = await fetchJSON(`./.secrets/${vaultKey}.json`);
         let secret = JSON.parse(json) as APIKeySet;
-        return secret.APIKeys?.includes(secretKey) ?? false;
+        return secret?.APIKeys?.includes(secretKey) ?? false;
     } catch (error) { }
     return false;
 }

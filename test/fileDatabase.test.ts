@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert';
 import { promises as fs } from 'node:fs';
 import { FileDatabase } from '../src/services/fileDatabase.js';
-import { fetchFile, vaultExists } from '../src/utils/fileDatabase.utils.js';
+import { fetchFile, vaultExists } from '../src/utils/file.js';
 import { MediaVault } from '../src/services/vault.js';
 import { MediaBinary } from '../src/models/mediaModel.js';
 

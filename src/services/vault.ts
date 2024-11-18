@@ -2,7 +2,7 @@ import { extname } from "path";
 import { IndexDirectory, IndexFactory } from "./indexDirectory.js";
 import { ImageBinary, MediaBinary } from "../models/mediaModel.js";
 import { VaultIndex } from "../models/fileDatabase.models.js";
-import { fetchFile, putFile } from "../utils/fileDatabase.utils.js";
+import { fetchFile, putFile } from "../utils/file.js";
 
 export class DirectoryVault extends IndexDirectory {
     vault : Vault;
