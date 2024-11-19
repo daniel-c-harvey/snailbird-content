@@ -51,7 +51,13 @@ export class Server {
         this.express.get(`/${vaultKey}/:entryKey`, async (req, res) => {
             let key = req.params['entryKey'];
             if (key !== undefined && key !== '' && key.length > 0) {
-                await this.respondGetImg(key, res);
+                try {
+                    await this.respondGetImg(key, res);
+                } catch (error) {
+                    FiveHundred(res, error);
+                }
+            } else {
+                FourOhFour(res);
             }
         });
 
@@ -64,10 +70,14 @@ export class Server {
 
             if (key !== undefined && key !== '' && 
                 key.length > 0 && dto !== undefined &&
-                dto.size > 0 && dto.buffer !== undefined
+                dto.size > 0 && dto.bytes !== undefined
             ) {
-                let media = new MediaBinary(dto.buffer, dto.size);
-                await this.respondPutImg(key, media, res);
+                try {
+                    let media = new MediaBinary(dto.bytes, dto.size);
+                    await this.respondPutImg(key, media, res);
+                } catch (error) {
+                    FiveHundred(res, error);
+                }
             } else {
                 FourOhFour(res);
             }

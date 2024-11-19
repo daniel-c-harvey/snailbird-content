@@ -1,6 +1,6 @@
 
 export interface MediaBinaryDto {
-    buffer : Uint8Array;
+    bytes : number[];
     size : number;
 }
 
@@ -8,8 +8,8 @@ export class MediaBinary {
     buffer: Buffer;
     size: number;
 
-    constructor(buffer : Uint8Array, size : number) {
-        this.buffer = Buffer.from(buffer);
+    constructor(bytes : number[], size : number) {
+        this.buffer = Buffer.from(bytes);
         this.size = size;
     }
 }
@@ -17,8 +17,8 @@ export class MediaBinary {
 export class ImageBinary extends MediaBinary {
     extension: string;
 
-    constructor(buffer : Buffer, size : number, extension : string) { 
-        super(buffer, size);
+    constructor(bytes : number[], size : number, extension : string) { 
+        super(bytes, size);
         this.extension = extension;
     }
 }

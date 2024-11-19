@@ -11,7 +11,7 @@ export async function getMediaBinary(mediaName: string): Promise<MediaBinary> {
 export async function getMediaBinaryDto(mediaName: string): Promise<MediaBinaryDto> {
     let media = await getMediaBinary(mediaName);
     return {
-        buffer : Uint8Array.from(media.buffer),
+        bytes : Array.from(media.buffer),
         size : media.size
     }
 }
