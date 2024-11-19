@@ -5,7 +5,7 @@ import { parseCommands } from './utils/params.js';
 const options = parseCommands();
 
 try {
-    await Server.build(options.port);
+    await Server.build(options.databaseRootPath, options.port);
 } catch (error) {
     console.log(error)
 }

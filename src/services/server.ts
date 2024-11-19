@@ -5,13 +5,16 @@ import { MediaBinary, MediaBinaryDto } from '../models/mediaModel.js'
 import { FileDatabase } from './fileDatabase.js';
 import { MediaVault } from './vault.js';
 import { passSecret } from '../utils/secrets.js';
+import { Server as HttpServer } from 'http';
+
 
 export class Server {
-    expressServer : Express.Application;
+    express : Express.Application;
+    server : HttpServer;
     fileDB : FileDatabase;
 
-    static async build(port : number) : Promise<Server | undefined> {
-        let fdb = await FileDatabase.from('./media');
+    static async build(fdbRootPath : string, port : number) : Promise<Server | undefined> {
+        let fdb = await FileDatabase.from(fdbRootPath);
 
         if (fdb !== undefined) {
             return new Server(fdb, port);            
@@ -21,22 +24,22 @@ export class Server {
     
     private constructor(fdb : FileDatabase, port : number) {
         this.fileDB = fdb;
-        this.expressServer = express();
+        this.express = express();
 
-        this.expressServer.use(Express.json({strict : true}));
+        this.express.use(Express.json({strict : true}));  // idk what the consequences of this are
 
         // Register METHOD Handlers for each vault
         this.registerVaultMethods('img');
 
         // Register Catch-all route handler
-        this.expressServer.use((_1, res, _2) => {
+        this.express.use((_1, res, _2) => {
             // If we reach this point unhandled, terminate with a 404
             if (!res.closed) {
                 FourOhFour(res);
             }
         })
         
-        this.expressServer.listen(port);
+        this.server = this.express.listen(port);
     }
 
     private registerVaultMethods(vaultKey : string) {
@@ -45,7 +48,7 @@ export class Server {
         }
 
         // the endpoint for VIEWING the vault media
-        this.expressServer.get(`/${vaultKey}/:entryKey`, async (req, res) => {
+        this.express.get(`/${vaultKey}/:entryKey`, async (req, res) => {
             let key = req.params['entryKey'];
             if (key !== undefined && key !== '' && key.length > 0) {
                 await this.respondGetImg(key, res);
@@ -53,9 +56,9 @@ export class Server {
         });
 
         // Middleware and endpoints for vault management
-        this.expressServer.use('/manage', ManagerAuthentication);
+        this.express.use('/manage', ManagerAuthentication);
 
-        this.expressServer.post(`/manage/${vaultKey}/:entryKey`, async (req, res) => {
+        this.express.post(`/manage/${vaultKey}/:entryKey`, async (req, res) => {
             let key = req.params['entryKey'];
             let dto = req.body as MediaBinaryDto;
 
@@ -63,7 +66,8 @@ export class Server {
                 key.length > 0 && dto !== undefined &&
                 dto.size > 0 && dto.buffer !== undefined
             ) {
-                await this.respondPutImg(key, new MediaBinary(dto.buffer, dto.size), res);
+                let media = new MediaBinary(dto.buffer, dto.size);
+                await this.respondPutImg(key, media, res);
             } else {
                 FourOhFour(res);
             }

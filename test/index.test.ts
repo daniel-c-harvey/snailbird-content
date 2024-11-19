@@ -1,4 +1,8 @@
-import { read, readSync } from "node:fs";
 import runFileDatabaseTests from "./fileDatabase.test.js";
+import runServerTests from "./server.test.js";
 
-runFileDatabaseTests()
+const fileDatabaseRootPath = './test/media';
+const testPort = 61549;
+
+await runFileDatabaseTests(fileDatabaseRootPath);
+await runServerTests(fileDatabaseRootPath, testPort);

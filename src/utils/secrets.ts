@@ -1,6 +1,6 @@
 import { fetchJSON } from "./file.js";
 
-interface APIKeySet {
+export interface APIKeySet {
     APIKeys : string[];
 }
 
