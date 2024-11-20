@@ -102,7 +102,7 @@ export default async function runServerTests(fileDatabaseRootPath : string, port
                     });
                 });
                 
-                await t.test('Manage API accept with valid auth header', async (t) => {
+                await t.test('Manage API accept POST with valid auth header', async (t) => {
                     // Arrange
                     let secrets = JSON.parse(await fetchJSON(`./.secrets/manager.json`)) as APIKeySet;
                     let secret = secrets['APIKeys'][0]; // get the valid key
@@ -136,6 +136,30 @@ export default async function runServerTests(fileDatabaseRootPath : string, port
                         // Assert
                         assert.strictEqual(res.status, 200);
                         assert.strictEqual(bytes.length, 0, 'Body was not of length zero');
+                    });
+                });
+
+                await t.test('Manage API accept GET with valid auth header', async (t) => {
+                    // Arrange
+                    let secrets = JSON.parse(await fetchJSON(`./.secrets/manager.json`)) as APIKeySet;
+                    let secret = secrets['APIKeys'][0]; // get the valid key
+
+                    let req : RequestInit = { 
+                        method : 'GET',
+                        headers : {
+                            'Content-Type' : 'application/json',
+                            'ApiKey' : secret         
+                        }
+                    };
+
+                    await t.test('Manage API GET with good auth header on valid endpoint -> 200', async (t) => {
+                        // Act
+                        const res = await fetch(baseURL + '/manage/img/test.png', req);
+                        const bytes = Buffer.from(await res.arrayBuffer());
+                        
+                        // Assert
+                        assert.strictEqual(res.status, 200);
+                        assert.strictEqual(bytes.length > 0, true, 'Body was empty');
                     });
                 });
             });

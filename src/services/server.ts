@@ -47,69 +47,22 @@ export class Server {
             this.fileDB.createVault(vaultKey, new MediaVault());
         }
 
-        // the endpoint for VIEWING the vault media
+        // VIEWING the vault media
         this.express.get(`/${vaultKey}/:entryKey`, async (req, res) => {
-            let key = req.params['entryKey'];
-            if (key !== undefined && key !== '' && key.length > 0) {
-                try {
-                    await this.respondGetImg(key, res);
-                } catch (error) {
-                    FiveHundred(res, error);
-                }
-            } else {
-                FourOhFour(res);
-            }
+            await viewVaultGET(req, res, this.fileDB, vaultKey);
         });
 
         // Middleware and endpoints for vault management
         this.express.use('/manage', ManagerAuthentication);
 
+        // MANAGING the vault media
+        this.express.get(`/manage/${vaultKey}/:entryKey`, async (req, res) => {
+            await managerVaultGET(req, res, this.fileDB, vaultKey);
+        });
         this.express.post(`/manage/${vaultKey}/:entryKey`, async (req, res) => {
-            let key = req.params['entryKey'];
-            let dto = req.body as MediaBinaryDto;
-
-            if (key !== undefined && key !== '' && 
-                key.length > 0 && dto !== undefined &&
-                dto.size > 0 && dto.bytes !== undefined
-            ) {
-                try {
-                    let media = new MediaBinary(dto.bytes, dto.size);
-                    await this.respondPutImg(key, media, res);
-                } catch (error) {
-                    FiveHundred(res, error);
-                }
-            } else {
-                FourOhFour(res);
-            }
+            await managerVaultPOST(req, res, this.fileDB, vaultKey);
         });
     }
-
-    async respondGetImg(imgKey : string, res: Express.Response) {
-        if (this.fileDB !== undefined) {
-            let image = await this.fileDB.loadResource("img", imgKey);
-            
-            if (image !== undefined && Buffer.isBuffer(image.buffer)) 
-            {
-                res.type('png');
-                res.send(image.buffer);
-                res.end(null, 'binary');
-            } else {
-                FourOhFour(res);
-            }
-        }
-    }
-
-    async respondPutImg(imgKey : string, media : MediaBinary, res: Express.Response) {
-        if (await this.fileDB.registerResource('img', imgKey, media)) {
-            res.type('application/json');
-            res.statusCode = 200;
-        } else {
-            res.statusCode = 404;
-        }
-        res.end(null, 'utf-8');
-    }
-
-    
 }
 
 const ManagerAuthentication = async function(req : Express.Request, res : Express.Response, next : Express.NextFunction) {
@@ -124,6 +77,85 @@ const ManagerAuthentication = async function(req : Express.Request, res : Expres
     return FourOhThree(res);
 }
 
+const viewVaultGET = async function(req : Express.Request, res : Express.Response, fileDB : FileDatabase, vaultKey : string) {
+    let mediaKey = req.params['entryKey'];
+
+    if (mediaKey !== undefined && mediaKey !== '' && mediaKey.length > 0) {
+        try {
+            let image = await fileDB.loadResource(vaultKey, mediaKey);
+    
+            if (image !== undefined && Buffer.isBuffer(image.buffer)) 
+            {
+                res.type('png'); // todo get the file extensions, and finally can use that MIME type converter thing
+                res.send(image.buffer);
+                res.end(null, 'binary');
+                return;
+            }
+        } catch (error) {
+            FiveHundred(res, error);
+            return;
+        }
+    } 
+    FourOhFour(res);
+    return;
+}
+
+const managerVaultGET = async function(req : Express.Request, res : Express.Response, fileDB : FileDatabase, vaultKey : string) {
+    let mediaKey = req.params['entryKey'];
+
+    if (mediaKey !== undefined && mediaKey !== '' && mediaKey.length > 0) {
+        try {
+            let media = await fileDB.loadResource(vaultKey, mediaKey);
+            if (media !== undefined && Buffer.isBuffer(media.buffer)) 
+            {
+                let dto = new MediaBinaryDto(media);
+                let json = JSON.stringify(dto);
+                
+                if (json?.length > 0) {
+                    res.type('application/json');
+                    res.statusCode = 200;
+                    res.end(json, 'utf-8');
+                    return;
+                } else {
+                    FiveHundred(res, 'Failed to encode response object');
+                    return;
+                }
+            }
+        } catch (error) {
+            FiveHundred(res, error);
+            return;
+        }
+    }
+    FourOhFour(res);
+    return;
+}
+
+const managerVaultPOST = async function(req : Express.Request, res : Express.Response, fileDB : FileDatabase, vaultKey : string) {
+    let key = req.params['entryKey'];
+    let dto = req.body as MediaBinaryDto;
+
+    if (key !== undefined && key !== '' && 
+        key.length > 0 && dto !== undefined &&
+        dto.size > 0 && dto.bytes !== undefined
+    ) {
+        try {
+            let media = new MediaBinary(dto.bytes, dto.size);
+            if (await fileDB.registerResource(vaultKey, key, media)) {
+                res.type('application/json');
+                res.statusCode = 200;
+                res.end(null, 'utf-8');
+                return;
+            }
+        } catch (error) {
+            FiveHundred(res, error);
+            return;
+        }
+    }        
+    FourOhFour(res);
+    return;
+}    
+
+
 function FourOhThree(res : Express.Response) {
     res.type('application/json');
     res.statusCode = 403;
@@ -137,8 +169,6 @@ function FourOhFour(res : Express.Response) {
 }
 
 function FiveHundred(res : Express.Response, e : unknown) {
-    let error = e as Error;
-
     res.type('application/json');
     res.statusCode = 500;
     res.end(null, 'utf-8');
