@@ -5,14 +5,15 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "run": "node ./build/src",
-    "go": "npm run build && npm run run",
-    "debug": "npm run build && node --inspect ./build/src",
-    "test": "npm run build && node --test ./build/test/index.test.js",
-    "testi": "npm run build && node --test --inspect ./build/test/index.test.js"
+    "run": "node ./bin/src",
+    "debug": "node --inspect ./bin/src",
+    "br": "npm run build && npm run run",
+    "bd": "npm run build && npm run debug",
+    "test": "npm run build && node --test ./bin/test/index.test.js",
+    "testi": "npm run build && node --test --inspect ./bin/test/index.test.js"
   },
   "files": [
-    "./build/**/*"
+    "./bin/**/*"
   ],
   "author": "Daniel Harvey",
   "type": "module",

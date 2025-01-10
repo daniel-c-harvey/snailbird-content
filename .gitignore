@@ -131,9 +131,11 @@ dist
 
 # Transpiled JS
 /build/
+/bin/
 
 # Media content
 /media/**/*
 
 /test/media/
 /test/media/**/*/
+/.secrets/**/*

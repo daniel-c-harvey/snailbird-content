@@ -1,9 +1,8 @@
 import path from "path";
 import { VaultIndex } from "../models/fileDatabase.models.js";
-import { putObject } from "../utils/fileDatabase.utils.js";
-import { vaultExists } from "../utils/fileDatabase.utils.js";
-import { makeVaultDirectory } from "../utils/fileDatabase.utils.js";
-import { fetchObject } from "../utils/fileDatabase.utils.js";
+import { putObject } from "../utils/file.js";
+import { makeVaultDirectory } from "../utils/file.js";
+import { fetchObject } from "../utils/file.js";
 
 abstract class AbstractIndex {
     rootPath : string;
@@ -12,11 +11,11 @@ abstract class AbstractIndex {
         this.rootPath = path;
     }
     
-    protected getKey() : string {
+    getKey() : string {
         return path.basename(this.rootPath);
     }
     
-    protected async writeIndex(index: VaultIndex) {
+    protected async saveIndex(index: VaultIndex) {
         await putObject(this.rootPath + '/index', index);
     }
 }
@@ -28,28 +27,20 @@ export class IndexFactory extends AbstractIndex {
     }
 
     async buildIndex() : Promise<VaultIndex | undefined> {
-        return this.loadOrCreateIndex()
-                .then(
-                    index => index,
-                    _ => undefined
-                );
+        try {
+            return await this.loadOrCreateIndex();
+        } catch (error) {
+            return undefined;
+        }
     }
 
     protected async loadOrCreateIndex() : Promise<VaultIndex>
     {
-        return new Promise<VaultIndex>((resolve, reject) => {
-            fetchObject(this.rootPath + '/index')
-            .then(
-                (index) => resolve(index),
-                (_) => {
-                    this.createIndex()
-                    .then(
-                        index => resolve(index),
-                        (error) => reject(error)
-                    )
-                }
-            );
-        });
+        try {
+            return await fetchObject(this.rootPath + '/index')
+        } catch (error) {
+            return await this.createIndex();
+        }
     }
 
     protected async createIndex() : Promise<VaultIndex> {
@@ -59,18 +50,15 @@ export class IndexFactory extends AbstractIndex {
             entryKeys: new Set<string>()
         };
 
-        if (!await vaultExists(this.rootPath)) {
-            await makeVaultDirectory(this.rootPath);
-        }
-
-        await this.writeIndex(index);
+        await makeVaultDirectory(this.rootPath);
+        await this.saveIndex(index);
 
         return index;
     }
 }
 
 export abstract class IndexDirectory extends AbstractIndex {
-    index : VaultIndex;
+    private index : VaultIndex;
 
     protected constructor(rootPath : string, index : VaultIndex) {
         super(rootPath);
@@ -80,7 +68,19 @@ export abstract class IndexDirectory extends AbstractIndex {
     protected async addToIndex(entryKey: string) {
         if (this.index !== undefined) {
             this.index.entryKeys.add(entryKey);
-            await this.writeIndex(this.index);
+            await this.saveIndex(this.index);
         }
     }
+
+    protected getIndexEntries() : Set<string>{
+        return this.index.entryKeys;
+    }
+
+    getIndexSize() : number {
+        return this.index.entryKeys.size;
+    }
+
+    hasIndexEntry(entryKey : string) : boolean {
+        return this.index.entryKeys.has(entryKey);
+    }    
 }

@@ -2,7 +2,7 @@ import { extname } from "path";
 import { IndexDirectory, IndexFactory } from "./indexDirectory.js";
 import { ImageBinary, MediaBinary } from "../models/mediaModel.js";
 import { VaultIndex } from "../models/fileDatabase.models.js";
-import { fetchFile, putFile } from "../utils/fileDatabase.utils.js";
+import { fetchFile, putFile } from "../utils/file.js";
 
 export class DirectoryVault extends IndexDirectory {
     vault : Vault;
@@ -29,7 +29,7 @@ export class DirectoryVault extends IndexDirectory {
     }
 
     async getEntry(entryKey : string) : Promise<MediaBinary | undefined> {
-        if (this.index.entryKeys.has(entryKey)) {
+        if (this.hasIndexEntry(entryKey)) {
             let bmedia : MediaBinary = await fetchFile(this.rootPath + '/' + entryKey);
             return bmedia;
         }
@@ -54,13 +54,10 @@ export class MediaVault extends Vault {
         const extension = extname(mediaPath);
         let mediaBinary = await super.getMediaAsync(mediaPath);
 
-        return new Promise<ImageBinary>(
-            resolve => resolve(
-            {
-                buffer : mediaBinary.buffer,
-                size : mediaBinary.size,
-                extension : extension
-            }
-        ));
+        return {
+            buffer : mediaBinary.buffer,
+            size : mediaBinary.size,
+            extension : extension
+        }
     }
 }
