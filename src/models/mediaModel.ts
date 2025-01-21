@@ -2,29 +2,30 @@
 export class MediaBinaryDto {
     bytes : number[];
     size : number;
+    mime: string;
 
     constructor(other : MediaBinary) {
         this.bytes = Array.from(other.buffer);
         this.size = other.size;
+        this.mime = getMimeType(other.extension)
     }
 }
 
 export class MediaBinary {
     buffer: Buffer;
     size: number;
+    extension: string;
 
-    constructor(bytes : number[], size : number) {
+    constructor(bytes : number[], size : number, extension : string) {
         this.buffer = Buffer.from(bytes);
         this.size = size;
+        this.extension = extension;
     }
 }
 
 export class ImageBinary extends MediaBinary {
-    extension: string; // todo migrate this up to MediaBinary or find a way to choose the correct MediaVault and MediaBinary sub-types;  aggregate types for which vault and binary types are associated with a particular type of media, and key that when constructing vaults.
-
     constructor(bytes : number[], size : number, extension : string) { 
-        super(bytes, size);
-        this.extension = extension;
+        super(bytes, size, extension);
     }
 }
 
