@@ -86,7 +86,7 @@ const viewVaultGET = async function(req : Express.Request, res : Express.Respons
     
             if (image !== undefined && Buffer.isBuffer(image.buffer)) 
             {
-                res.type('png'); // todo get the file extensions, and finally can use that MIME type converter thing
+                res.type('png');
                 res.send(image.buffer);
                 res.end(null, 'binary');
                 return;
@@ -139,7 +139,7 @@ const managerVaultPOST = async function(req : Express.Request, res : Express.Res
         dto.size > 0 && dto.bytes !== undefined
     ) {
         try {
-            let media = new MediaBinary(dto.bytes, dto.size);
+            let media = MediaBinary.from(dto);
             if (await fileDB.registerResource(vaultKey, key, media)) {
                 res.type('application/json');
                 res.statusCode = 200;

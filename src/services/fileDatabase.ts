@@ -1,18 +1,18 @@
 import { MediaBinary } from '../models/mediaModel.js';
-import { IndexDirectory, IndexFactory } from './indexDirectory.js';
+import { DirectoryIndexDirectory, IndexDirectory, IndexFactory } from './index.js';
 import { DirectoryVault, MediaVault, Vault } from './vault.js';
-import { VaultIndex } from '../models/fileDatabase.models.js';
+import { DirectoryIndex, DirectoryIndexData, VaultIndex } from '../models/fileDatabase.models.js';
 
-export class FileDatabase extends IndexDirectory
+export class FileDatabase extends DirectoryIndexDirectory
 {
-    private vaults : Map<string, DirectoryVault>;
+    private vaults : Map<string, DirectoryVault>
     
     static async from(rootPath : string) : Promise<FileDatabase | undefined> {
-        const factory = new IndexFactory(rootPath);
-        let index = await factory.buildIndex();
+        const factory = new IndexFactory<DirectoryIndex, DirectoryIndexData>(rootPath, (data) => new DirectoryIndex(data), (path) => new DirectoryIndexData(path));
+        let rootIndex = await factory.buildIndex();
         
-        if (index !== undefined) {
-            let db = new FileDatabase(rootPath, index);
+        if (rootIndex !== undefined) {
+            let db = new FileDatabase(rootPath, rootIndex);
             await db.initVaults();
             return db;
         }
@@ -20,7 +20,7 @@ export class FileDatabase extends IndexDirectory
         return undefined;
     }
 
-    protected constructor(rootPath : string, index : VaultIndex)
+    protected constructor(rootPath : string, index : DirectoryIndex)
     {
         super(rootPath, index);
         this.vaults = new Map<string, DirectoryVault>();
@@ -32,7 +32,7 @@ export class FileDatabase extends IndexDirectory
         }
     }
     
-    protected async initVault(vaultKey : string, vault : Vault) {
+    protected async initVault(vaultKey : string, vault : MediaVault) {
         const path = this.rootPath + '/' + vaultKey;
         let dvault = await DirectoryVault.from(path, vault);
         
@@ -49,7 +49,7 @@ export class FileDatabase extends IndexDirectory
         return this.hasIndexEntry(vaultKey) ? this.vaults.get(vaultKey) : undefined;
     }
 
-    async createVault(vaultKey : string, vault : Vault) {
+    async createVault(vaultKey : string, vault : MediaVault) {
         try {
             let path = this.rootPath + '/' + vaultKey;
             let dvault = await DirectoryVault.from(path, vault);
@@ -67,17 +67,17 @@ export class FileDatabase extends IndexDirectory
         try {
             let dvault : DirectoryVault | undefined = this.vaults.get(vaultKey);
             if (dvault !== undefined) {
-                return await dvault.vault.getMediaAsync(dvault.rootPath + '/' + entryKey);
+                return await dvault.getEntry(entryKey);
             }
         } catch (error) { }
         return undefined;
     }
 
-    async registerResource(vaultKey : string, mediaKey: string, media : MediaBinary) : Promise<boolean> {
+    async registerResource(vaultKey : string, entryKey: string, media : MediaBinary) : Promise<boolean> {
         try {
             let dvault = this.vaults.get(vaultKey);
             if (dvault !== undefined) {
-                await dvault.addEntry(mediaKey, media)
+                await dvault.addEntry(entryKey, media)
                 return true;
             }
         } catch (e) { }

@@ -1,30 +1,53 @@
+import { reverse } from "../utils/reverse.js";
 
-export class MediaBinaryDto {
+export class FileBinaryDto {
     bytes : number[];
     size : number;
+
+    constructor(other : FileBinary) {
+        this.bytes = Array.from(other.buffer);
+        this.size = other.size;
+    }
+}
+
+export class MediaBinaryDto extends FileBinaryDto {
     mime: string;
 
     constructor(other : MediaBinary) {
-        this.bytes = Array.from(other.buffer);
-        this.size = other.size;
+        super(other);
         this.mime = getMimeType(other.extension)
     }
 }
 
-export class MediaBinary {
+export class FileBinary {
     buffer: Buffer;
     size: number;
+
+    constructor(bytes : Buffer, size : number) {
+        this.buffer = bytes;
+        this.size = size;
+    }
+}
+
+export class MediaBinary extends FileBinary {
     extension: string;
 
-    constructor(bytes : number[], size : number, extension : string) {
-        this.buffer = Buffer.from(bytes);
-        this.size = size;
+    constructor(bytes : Buffer, size : number, extension : string) {
+        super(bytes, size);
         this.extension = extension;
+    }
+
+    static from(other : MediaBinaryDto) {
+        return {
+            buffer : Buffer.from(other.bytes),
+            size : other.size,
+            extension : getExtensionType(other.mime)
+        }
     }
 }
 
 export class ImageBinary extends MediaBinary {
-    constructor(bytes : number[], size : number, extension : string) { 
+    constructor(bytes : Buffer, size : number, extension : string) { 
         super(bytes, size, extension);
     }
 }
@@ -40,6 +63,12 @@ const MIME_TYPES: Record<string, string> = {
     '.bmp': 'image/bmp'
 };
 
+const EXTENSIONS = reverse(MIME_TYPES);
+
 function getMimeType(extension: string): string {
     return MIME_TYPES[extension.toLowerCase()];
+}
+
+function getExtensionType(mime : string) : string {
+    return EXTENSIONS[mime.toLowerCase()];
 }

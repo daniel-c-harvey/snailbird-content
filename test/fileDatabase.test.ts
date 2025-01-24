@@ -39,18 +39,19 @@ export default async function runFileDatabaseTests(fileDatabaseRootPath : string
 
                 // Used for several tests
                 let mediaName = 'test.png';
+                let entryKey = 'test';
 
                 await t.test('Can add new media to image vault', async (t) => {
                     // Arrange
                     let image = await getMediaBinary(mediaName);
 
                     // Act
-                    await fdb.registerResource('img', mediaName, image);
+                    await fdb.registerResource('img', entryKey, image);
                     
                     // Assert
                     let dvault = fdb.getVault('img');
                     assert.notStrictEqual(dvault, undefined, 'Vault undefined');
-                    assert.strictEqual(dvault?.hasIndexEntry(mediaName), true, 'Added image is not in the index');                    
+                    assert.strictEqual(dvault?.hasIndexEntry(entryKey), true, 'Added image is not in the index');                    
                 });
 
                 await t.test('Can load valid reource from vault', async (t) => {
@@ -59,7 +60,7 @@ export default async function runFileDatabaseTests(fileDatabaseRootPath : string
                     assert.notStrictEqual(dvault, undefined, 'Vault is undefined');
 
                     if (dvault !== undefined) {                        
-                        let bmedia = await fdb.loadResource('img', mediaName);
+                        let bmedia = await fdb.loadResource('img', entryKey);
                         assert.notStrictEqual(bmedia, undefined, 'Image package is undefined');
 
                         if (bmedia !== undefined) {
@@ -78,7 +79,7 @@ export default async function runFileDatabaseTests(fileDatabaseRootPath : string
                     let success = true;
                     let vault;
                     try {
-                        await fdb.loadResource('i-dont-exist', 'something.wmv');
+                        await fdb.loadResource('i-dont-exist', 'something');
                         vault = fdb.getVault('i-dont-exist');
                     } catch (error) {
                         success = false;
@@ -92,7 +93,7 @@ export default async function runFileDatabaseTests(fileDatabaseRootPath : string
                 await t.test('Deny access to nonexistent resource', async (t) => {
                     let success = true;
                     try {
-                        await fdb.loadResource('img', 'i-dont-exist.jpeg');
+                        await fdb.loadResource('img', 'i-dont-exist');
                     } catch (error) {
                         success = false;
                     }

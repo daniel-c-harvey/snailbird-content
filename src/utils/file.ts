@@ -1,13 +1,13 @@
 import { Buffer } from 'buffer';
 import { promises as fs, ReadStream, WriteStream } from 'fs';
 import { FileHandle } from 'fs/promises';
-import { MediaBinary } from '../models/mediaModel.js';
+import { FileBinary } from '../models/mediaModel.js';
 import { LinkedList } from './adt.js';
 import { serialize, deserialize } from 'v8';
 import { finished } from 'stream/promises';
 import { StringDecoder } from 'string_decoder';
 
-export async function fetchFile(mediaPath : string) : Promise<MediaBinary> {
+export async function fetchFile(mediaPath : string) : Promise<FileBinary> {
     let fileHandle : FileHandle;
     let fileReader : ReadStream;
 
@@ -36,10 +36,7 @@ export async function fetchFile(mediaPath : string) : Promise<MediaBinary> {
         offset += data.byteLength;
     });
 
-    return {
-        buffer: bytes,
-        size: bytes.length
-    };   
+    return new FileBinary(bytes, bytes.length);
 }
 
 export async function putFile(mediaPath : string, buffer : Buffer) {

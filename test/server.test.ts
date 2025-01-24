@@ -22,9 +22,9 @@ export default async function runServerTests(fileDatabaseRootPath : string, port
 
             await t.test('Server View API passes all units', async (t) => {
 
-                await t.test('View API responds to /img/test.png', async (t) => {
+                await t.test('View API responds to /img/test', async (t) => {
                     // Act
-                    let res = await fetch(baseURL + '/img/test.png');
+                    let res = await fetch(baseURL + '/img/test');
                     let blob = (await res.blob());
                     let bytes = Buffer.from(await blob.arrayBuffer());
 
@@ -51,7 +51,7 @@ export default async function runServerTests(fileDatabaseRootPath : string, port
 
                     await t.test('Manage API with no auth header on valid endpoint -> 403 empty body', async (t) => {
                         // Act
-                        const res = await fetch(baseURL + '/manage/img/nope.png', req);
+                        const res = await fetch(baseURL + '/manage/img/nope', req);
                         const bytes = Buffer.from(await res.arrayBuffer());
                         
                         // Assert
@@ -61,7 +61,7 @@ export default async function runServerTests(fileDatabaseRootPath : string, port
                     
                     await t.test('Manage API with no auth header on INvalid endpoint -> 403 empty body', async (t) => {
                         // Act
-                        const res = await fetch(baseURL + '/manage/FAKE/test.png', req);
+                        const res = await fetch(baseURL + '/manage/FAKE/test', req);
                         const bytes = Buffer.from(await res.arrayBuffer());
                         
                         // Assert
@@ -83,7 +83,7 @@ export default async function runServerTests(fileDatabaseRootPath : string, port
                     
                     await t.test('Manage API with bad auth header on valid endpoint -> 403 empty body', async (t) => {
                         // Act
-                        const res = await fetch(baseURL + '/manage/img/test.png', req);
+                        const res = await fetch(baseURL + '/manage/img/test', req);
                         const bytes = Buffer.from(await res.arrayBuffer());
                         
                         // Assert
@@ -93,7 +93,7 @@ export default async function runServerTests(fileDatabaseRootPath : string, port
                     
                     await t.test('Manage API with bad auth header on INvalid endpoint -> 403 empty body', async (t) => {
                         // Act
-                        const res = await fetch(baseURL + '/manage/FAKE/test.png', req);
+                        const res = await fetch(baseURL + '/manage/FAKE/test', req);
                         const bytes = Buffer.from(await res.arrayBuffer());
                         
                         // Assert
@@ -120,7 +120,7 @@ export default async function runServerTests(fileDatabaseRootPath : string, port
 
                     await t.test('Manage API with good auth header on INvalid endpoint -> 404 empty body', async (t) => {
                         // Act
-                        const res = await fetch(baseURL + '/manage/FAKE/test.png', req);
+                        const res = await fetch(baseURL + '/manage/FAKE/test', req);
                         const bytes = Buffer.from(await res.arrayBuffer());
                         
                         // Assert
@@ -130,7 +130,7 @@ export default async function runServerTests(fileDatabaseRootPath : string, port
                     
                     await t.test('Manage API with good auth header on valid endpoint -> 200', async (t) => {
                         // Act
-                        const res = await fetch(baseURL + '/manage/img/test.png', req);
+                        const res = await fetch(baseURL + '/manage/img/test', req);
                         const bytes = Buffer.from(await res.arrayBuffer());
                         
                         // Assert
@@ -154,7 +154,7 @@ export default async function runServerTests(fileDatabaseRootPath : string, port
 
                     await t.test('Manage API GET with good auth header on valid endpoint -> 200', async (t) => {
                         // Act
-                        const res = await fetch(baseURL + '/manage/img/test.png', req);
+                        const res = await fetch(baseURL + '/manage/img/test', req);
                         const bytes = Buffer.from(await res.arrayBuffer());
                         
                         // Assert
