@@ -1,11 +1,11 @@
 import { reverse } from "../utils/reverse.js";
 
 export class FileBinaryDto {
-    bytes : number[];
+    base64 : string;
     size : number;
 
     constructor(other : FileBinary) {
-        this.bytes = Array.from(other.buffer);
+        this.base64 = other.buffer.toString('base64');
         this.size = other.size;
     }
 }
@@ -23,8 +23,8 @@ export class FileBinary {
     buffer: Buffer;
     size: number;
 
-    constructor(bytes : Buffer, size : number) {
-        this.buffer = bytes;
+    constructor(buffer : Buffer, size : number) {
+        this.buffer = buffer;
         this.size = size;
     }
 }
@@ -32,14 +32,14 @@ export class FileBinary {
 export class MediaBinary extends FileBinary {
     extension: string;
 
-    constructor(bytes : Buffer, size : number, extension : string) {
-        super(bytes, size);
+    constructor(buffer : Buffer, size : number, extension : string) {
+        super(buffer, size);
         this.extension = extension;
     }
 
     static from(other : MediaBinaryDto) {
         return {
-            buffer : Buffer.from(other.bytes),
+            buffer : Buffer.from(other.base64, 'base64'),
             size : other.size,
             extension : getExtensionType(other.mime)
         }

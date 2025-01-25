@@ -136,7 +136,7 @@ const managerVaultPOST = async function(req : Express.Request, res : Express.Res
 
     if (key !== undefined && key !== '' && 
         key.length > 0 && dto !== undefined &&
-        dto.size > 0 && dto.bytes !== undefined
+        dto.size > 0 && dto.base64 !== undefined
     ) {
         try {
             let media = MediaBinary.from(dto);
