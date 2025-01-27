@@ -3,10 +3,10 @@ import express, * as Express from 'express';
 import { Buffer } from 'buffer';
 import { MediaBinary, MediaBinaryDto } from '../models/mediaModel.js'
 import { FileDatabase } from './fileDatabase.js';
-import { MediaVault } from './vault.js';
 import { passSecret } from '../utils/secrets.js';
 import { Server as HttpServer } from 'http';
-
+import { MediaVaultType } from '../models/mediaModelFactory.js';
+import { EntryKey } from '../models/fileDatabase.models.js';
 
 export class Server {
     express : Express.Application;
@@ -26,10 +26,10 @@ export class Server {
         this.fileDB = fdb;
         this.express = express();
 
-        this.express.use(Express.json({strict : true}));  // idk what the consequences of this are
+        this.express.use(Express.json({strict : true, limit: 25 * 1024 * 1024}));  // idk what the consequences of this are
 
         // Register METHOD Handlers for each vault
-        this.registerVaultMethods('img');
+        this.registerVaultMethods({key: 'img', type: MediaVaultType.Image});
 
         // Register Catch-all route handler
         this.express.use((_1, res, _2) => {
@@ -42,13 +42,13 @@ export class Server {
         this.server = this.express.listen(port);
     }
 
-    private registerVaultMethods(vaultKey : string) {
+    private registerVaultMethods(vaultKey : EntryKey) {
         if (!this.fileDB.hasVault(vaultKey)) {
-            this.fileDB.createVault(vaultKey, new MediaVault());
+            this.fileDB.createVault(vaultKey);
         }
 
         // VIEWING the vault media
-        this.express.get(`/${vaultKey}/:entryKey`, async (req, res) => {
+        this.express.get(`/${vaultKey.key}/:entryKey`, async (req, res) => {
             await viewVaultGET(req, res, this.fileDB, vaultKey);
         });
 
@@ -56,10 +56,10 @@ export class Server {
         this.express.use('/manage', ManagerAuthentication);
 
         // MANAGING the vault media
-        this.express.get(`/manage/${vaultKey}/:entryKey`, async (req, res) => {
+        this.express.get(`/manage/${vaultKey.key}/:entryKey`, async (req, res) => {
             await managerVaultGET(req, res, this.fileDB, vaultKey);
         });
-        this.express.post(`/manage/${vaultKey}/:entryKey`, async (req, res) => {
+        this.express.post(`/manage/${vaultKey.key}/:entryKey`, async (req, res) => {
             await managerVaultPOST(req, res, this.fileDB, vaultKey);
         });
     }
@@ -77,12 +77,12 @@ const ManagerAuthentication = async function(req : Express.Request, res : Expres
     return FourOhThree(res);
 }
 
-const viewVaultGET = async function(req : Express.Request, res : Express.Response, fileDB : FileDatabase, vaultKey : string) {
+const viewVaultGET = async function(req : Express.Request, res : Express.Response, fileDB : FileDatabase, vaultKey : EntryKey) {
     let mediaKey = req.params['entryKey'];
 
     if (mediaKey !== undefined && mediaKey !== '' && mediaKey.length > 0) {
         try {
-            let image = await fileDB.loadResource(vaultKey, mediaKey);
+            let image = await fileDB.loadResource(vaultKey.type, vaultKey, {key: mediaKey, type: vaultKey.type});
     
             if (image !== undefined && Buffer.isBuffer(image.buffer)) 
             {
@@ -100,12 +100,12 @@ const viewVaultGET = async function(req : Express.Request, res : Express.Respons
     return;
 }
 
-const managerVaultGET = async function(req : Express.Request, res : Express.Response, fileDB : FileDatabase, vaultKey : string) {
+const managerVaultGET = async function(req : Express.Request, res : Express.Response, fileDB : FileDatabase, vaultKey : EntryKey) {
     let mediaKey = req.params['entryKey'];
 
     if (mediaKey !== undefined && mediaKey !== '' && mediaKey.length > 0) {
         try {
-            let media = await fileDB.loadResource(vaultKey, mediaKey);
+            let media = await fileDB.loadResource(vaultKey.type, vaultKey, {key: mediaKey, type: vaultKey.type});
             if (media !== undefined && Buffer.isBuffer(media.buffer)) 
             {
                 let dto = new MediaBinaryDto(media);
@@ -130,7 +130,7 @@ const managerVaultGET = async function(req : Express.Request, res : Express.Resp
     return;
 }
 
-const managerVaultPOST = async function(req : Express.Request, res : Express.Response, fileDB : FileDatabase, vaultKey : string) {
+const managerVaultPOST = async function(req : Express.Request, res : Express.Response, fileDB : FileDatabase, vaultKey : EntryKey) {
     let key = req.params['entryKey'];
     let dto = req.body as MediaBinaryDto;
 
@@ -140,7 +140,7 @@ const managerVaultPOST = async function(req : Express.Request, res : Express.Res
     ) {
         try {
             let media = MediaBinary.from(dto);
-            if (await fileDB.registerResource(vaultKey, key, media)) {
+            if (await fileDB.registerResource(vaultKey.type, vaultKey, {key: key, type: vaultKey.type}, media)) {
                 res.type('application/json');
                 res.statusCode = 200;
                 res.end(null, 'utf-8');

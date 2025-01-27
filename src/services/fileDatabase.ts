@@ -1,11 +1,12 @@
 import { MediaBinary } from '../models/mediaModel.js';
-import { DirectoryIndexDirectory, IndexDirectory, IndexFactory } from './index.js';
-import { DirectoryVault, MediaVault, Vault } from './vault.js';
-import { DirectoryIndex, DirectoryIndexData, VaultIndex } from '../models/fileDatabase.models.js';
+import { DirectoryIndexDirectory, IndexFactory } from './index.js';
+import { MediaVault, ImageDirectoryVault } from './vault.js';
+import { DirectoryIndex, DirectoryIndexData, EntryKey } from '../models/fileDatabase.models.js';
+import { MediaVaultType, MediaVaultTypeMap } from '../models/mediaModelFactory.js';
 
 export class FileDatabase extends DirectoryIndexDirectory
 {
-    private vaults : Map<string, DirectoryVault>
+    private vaults : Map<EntryKey, MediaVault>
     
     static async from(rootPath : string) : Promise<FileDatabase | undefined> {
         const factory = new IndexFactory<DirectoryIndex, DirectoryIndexData>(rootPath, (data) => new DirectoryIndex(data), (path) => new DirectoryIndexData(path));
@@ -23,36 +24,36 @@ export class FileDatabase extends DirectoryIndexDirectory
     protected constructor(rootPath : string, index : DirectoryIndex)
     {
         super(rootPath, index);
-        this.vaults = new Map<string, DirectoryVault>();
+        this.vaults = new Map<EntryKey, MediaVault>();
     }
 
     protected async initVaults() {
         for (const vaultKey of this.getIndexEntries()) {
-            await this.initVault(vaultKey, new MediaVault());
+            await this.initVault(vaultKey);
         }
     }
     
-    protected async initVault(vaultKey : string, vault : MediaVault) {
-        const path = this.rootPath + '/' + vaultKey;
-        let dvault = await DirectoryVault.from(path, vault);
+    protected async initVault(vaultKey : EntryKey) {
+        const path = this.rootPath + '/' + vaultKey.key;
+        let dvault = await ImageDirectoryVault.from(path);
         
         if (dvault !== undefined) {
-            this.vaults.set(dvault.getKey(), dvault);
+            this.vaults.set(vaultKey, dvault);
         }
     }
 
-    hasVault(vaultKey : string) : boolean {
+    hasVault(vaultKey : EntryKey) : boolean {
         return this.vaults.has(vaultKey)
     }
 
-    getVault(vaultKey : string) : DirectoryVault | undefined {
-        return this.hasIndexEntry(vaultKey) ? this.vaults.get(vaultKey) : undefined;
+    getVault(vaultKey : EntryKey) : MediaVault | undefined {
+        return this.hasVault(vaultKey) ? this.vaults.get(vaultKey) : undefined;
     }
 
-    async createVault(vaultKey : string, vault : MediaVault) {
+    async createVault(vaultKey : EntryKey) {
         try {
-            let path = this.rootPath + '/' + vaultKey;
-            let dvault = await DirectoryVault.from(path, vault);
+            let path = this.rootPath + '/' + vaultKey.key;
+            let dvault = await ImageDirectoryVault.from(path);
 
             if (dvault !== undefined) {
                 this.vaults.set(vaultKey, dvault);
@@ -63,21 +64,21 @@ export class FileDatabase extends DirectoryIndexDirectory
         }
     }    
 
-    async loadResource(vaultKey : string, entryKey : string): Promise<MediaBinary | undefined> {
+    async loadResource<T extends MediaVaultType>(vk : T, vaultKey: EntryKey, entryKey: EntryKey): Promise<MediaVaultTypeMap[T] | undefined> {
         try {
-            let dvault : DirectoryVault | undefined = this.vaults.get(vaultKey);
-            if (dvault !== undefined) {
-                return await dvault.getEntry(entryKey);
+            const vault = this.vaults.get(vaultKey);
+            if (vault !== undefined) {
+                return await vault.getEntry<T>(vk, entryKey);
             }
         } catch (error) { }
         return undefined;
     }
 
-    async registerResource(vaultKey : string, entryKey: string, media : MediaBinary) : Promise<boolean> {
+    async registerResource<T extends MediaVaultType>(vk : T, vaultKey : EntryKey, entryKey: EntryKey, media : MediaVaultTypeMap[T]) : Promise<boolean> {
         try {
             let dvault = this.vaults.get(vaultKey);
             if (dvault !== undefined) {
-                await dvault.addEntry(entryKey, media)
+                await dvault.addEntry(vk, entryKey, media)
                 return true;
             }
         } catch (e) { }

@@ -4,8 +4,8 @@ import assert from 'node:assert';
 import { promises as fs } from 'node:fs';
 import { FileDatabase } from '../src/services/fileDatabase.js';
 import { vaultExists } from '../src/utils/file.js';
-import { MediaVault } from '../src/services/vault.js';
 import { testPngBytes, getMediaBinary } from './data.js';
+import { MediaVaultType } from '../src/models/mediaModelFactory.js';
 
 export default async function runFileDatabaseTests(fileDatabaseRootPath : string) {
 
@@ -31,7 +31,7 @@ export default async function runFileDatabaseTests(fileDatabaseRootPath : string
                 assert.strictEqual(fdb.getIndexSize(), 0, 'Index is not empty');
 
                 await t.test('Can add a new vault for images', async (t) => {
-                    await fdb.createVault('img', new MediaVault());
+                    await fdb.createVault({key: 'img', type: MediaVaultType.Image});
 
                     assert.strictEqual(fdb.getIndexSize(), 1, 'Index does not contain a single element');
                     assert.strictEqual(await vaultExists(fdb.rootPath + '/img'), true, 'Index does not contain the img entry');
@@ -39,28 +39,29 @@ export default async function runFileDatabaseTests(fileDatabaseRootPath : string
 
                 // Used for several tests
                 let mediaName = 'test.png';
-                let entryKey = 'test';
+                let entryKey = {key: 'test', type: MediaVaultType.Image};
+                let vaultKey = {key: 'img', type: MediaVaultType.Image};
 
                 await t.test('Can add new media to image vault', async (t) => {
                     // Arrange
-                    let image = await getMediaBinary(mediaName);
+                    let image = await getMediaBinary(mediaName, MediaVaultType.Image, {buffer: Buffer.from(testPngBytes), size: testPngBytes.length, extension: '.png', aspectRatio: 1.0});
 
                     // Act
-                    await fdb.registerResource('img', entryKey, image);
+                    await fdb.registerResource(MediaVaultType.Image, vaultKey, entryKey, image);
                     
                     // Assert
-                    let dvault = fdb.getVault('img');
+                    let dvault = fdb.getVault(vaultKey);
                     assert.notStrictEqual(dvault, undefined, 'Vault undefined');
                     assert.strictEqual(dvault?.hasIndexEntry(entryKey), true, 'Added image is not in the index');                    
                 });
 
                 await t.test('Can load valid reource from vault', async (t) => {
-                    let dvault = fdb.getVault('img');
+                    let dvault = fdb.getVault(vaultKey);
 
                     assert.notStrictEqual(dvault, undefined, 'Vault is undefined');
 
                     if (dvault !== undefined) {                        
-                        let bmedia = await fdb.loadResource('img', entryKey);
+                        let bmedia = await fdb.loadResource(vaultKey.type, vaultKey, entryKey);
                         assert.notStrictEqual(bmedia, undefined, 'Image package is undefined');
 
                         if (bmedia !== undefined) {
@@ -79,8 +80,10 @@ export default async function runFileDatabaseTests(fileDatabaseRootPath : string
                     let success = true;
                     let vault;
                     try {
-                        await fdb.loadResource('i-dont-exist', 'something');
-                        vault = fdb.getVault('i-dont-exist');
+                        let nonExistentVault = {key: 'i-dont-exist', type: MediaVaultType.Image};
+                        let nonExistentEntry = {key: 'something', type: MediaVaultType.Image};
+                        await fdb.loadResource(MediaVaultType.Image, nonExistentVault, nonExistentEntry);
+                        vault = fdb.getVault(nonExistentVault);
                     } catch (error) {
                         success = false;
                     }
@@ -93,7 +96,8 @@ export default async function runFileDatabaseTests(fileDatabaseRootPath : string
                 await t.test('Deny access to nonexistent resource', async (t) => {
                     let success = true;
                     try {
-                        await fdb.loadResource('img', 'i-dont-exist');
+                        let nonExistentEntry = {key: 'i-dont-exist', type: MediaVaultType.Image};
+                        await fdb.loadResource(MediaVaultType.Image, vaultKey, nonExistentEntry);
                     } catch (error) {
                         success = false;
                     }
@@ -118,7 +122,7 @@ export default async function runFileDatabaseTests(fileDatabaseRootPath : string
                 let fdb = fdbQ;
 
                 assert.strictEqual(fdb.getIndexSize(), 1, 'Index count is not 1');
-                assertVaultExists(fdb, 'img');
+                assertVaultExists(fdb, {key: 'img', type: MediaVaultType.Image});
                 // assert.strictEqual(fdb.has(img), true, 'Added image is not in the index');
             }
         });
@@ -138,7 +142,7 @@ export default async function runFileDatabaseTests(fileDatabaseRootPath : string
         assert.notStrictEqual(fdb, undefined, 'File Database undefined');
     }
 
-    function assertVaultExists(fdb: FileDatabase, vaultKey: string) {
+    function assertVaultExists(fdb: FileDatabase, vaultKey: {key: string, type: MediaVaultType}) {
         assert.strictEqual(fdb.hasIndexEntry(vaultKey), true, 'Vault not present in index');
 
         assert.strictEqual(fdb.hasVault(vaultKey), true, 'Vault is not present in vault collection');

@@ -1,8 +1,21 @@
+import { MediaVaultType } from "./mediaModelFactory.js";
+
+export type EntryKey = { key : string; type : MediaVaultType };
+
+export type MetaData = {
+    mediaKey : string;
+    extension : string; 
+};
+
+export type ImageMetaData = MetaData & {
+    aspectRatio : number;
+}
+
 export interface Index {
     getKey() : string;
-    getEntries() : string[];
+    getEntries() : EntryKey[];
     getEntriesSize(): number;
-    hasEntry(entryKey: string): boolean;
+    hasEntry(entryKey: EntryKey): boolean;
 }
 
 export class IndexData {
@@ -14,20 +27,11 @@ export class IndexData {
 }
 
 export class DirectoryIndexData extends IndexData {
-    entries : Set<string>;
+    entries : Set<EntryKey>;
 
     constructor(indexKey : string) {
         super(indexKey);
-        this.entries = new Set<string>();
-    }
-}
-
-export class VaultIndexData extends IndexData {
-    entries : Map<string, string>;
-
-    constructor(indexKey : string) {
-        super(indexKey);
-        this.entries = new Map<string, string>();
+        this.entries = new Set<EntryKey>();
     }
 }
 
@@ -41,17 +45,26 @@ export class DirectoryIndex extends DirectoryIndexData implements Index {
     getKey(): string {
         return this.indexKey;
     }
-    getEntries(): string[] {
+    getEntries(): EntryKey[] {
         return Array.from(this.entries);
     }
     getEntriesSize(): number {
         return this.entries.size;
     }
-    hasEntry(entryKey: string): boolean {
+    hasEntry(entryKey: EntryKey): boolean {
         return this.entries.has(entryKey);
     }
-    putEntry(entryKey : string) {
+    putEntry(entryKey : EntryKey) {
         this.entries.add(entryKey);
+    }
+}
+
+export class VaultIndexData extends IndexData {
+    entries : Map<EntryKey, MetaData>;
+
+    constructor(indexKey : string) {
+        super(indexKey);
+        this.entries = new Map<EntryKey, MetaData>();
     }
 }
 
@@ -65,19 +78,19 @@ export class VaultIndex extends VaultIndexData implements Index {
     getKey(): string {
         return this.indexKey;
     }
-    getEntries(): string[] {
+    getEntries(): EntryKey[] {
         return Array.from(this.entries.keys());
     }
     getEntriesSize(): number {
         return this.entries.size;
     }
-    hasEntry(entryKey: string): boolean {
+    hasEntry(entryKey: EntryKey): boolean {
         return this.entries.has(entryKey);
     }
-    getEntry(entryKey : string) {
+    getEntry(entryKey : EntryKey) {
         return this.entries.get(entryKey);
     }
-    putEntry(entryKey : string, mediaPath : string) {
-        this.entries.set(entryKey, mediaPath);
+    putEntry(entryKey : EntryKey, metaData : MetaData) {
+        this.entries.set(entryKey, metaData);
     }
 }

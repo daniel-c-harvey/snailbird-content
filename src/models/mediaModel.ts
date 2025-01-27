@@ -10,6 +10,21 @@ export class FileBinaryDto {
     }
 }
 
+export interface FileBinaryParams {
+    buffer : Buffer;
+    size : number;
+}
+
+export class FileBinary {
+    buffer: Buffer;
+    size: number;
+
+    constructor(params : FileBinaryParams) {
+        this.buffer = params.buffer;
+        this.size = params.size;
+    }
+}
+
 export class MediaBinaryDto extends FileBinaryDto {
     mime: string;
 
@@ -19,22 +34,16 @@ export class MediaBinaryDto extends FileBinaryDto {
     }
 }
 
-export class FileBinary {
-    buffer: Buffer;
-    size: number;
-
-    constructor(buffer : Buffer, size : number) {
-        this.buffer = buffer;
-        this.size = size;
-    }
+export interface MediaBinaryParams extends FileBinaryParams {
+    extension : string;
 }
 
 export class MediaBinary extends FileBinary {
     extension: string;
 
-    constructor(buffer : Buffer, size : number, extension : string) {
-        super(buffer, size);
-        this.extension = extension;
+    constructor(params : MediaBinaryParams) {
+        super(params);
+        this.extension = params.extension;
     }
 
     static from(other : MediaBinaryDto) {
@@ -46,9 +55,25 @@ export class MediaBinary extends FileBinary {
     }
 }
 
+export class ImageBinaryDto extends MediaBinaryDto {
+    aspectRatio : number;
+
+    constructor(other : ImageBinary) {
+        super(other);
+        this.aspectRatio = other.aspectRatio;
+    }
+}
+
+export interface ImageBinaryParams extends MediaBinaryParams {
+    aspectRatio : number;
+}
+
 export class ImageBinary extends MediaBinary {
-    constructor(bytes : Buffer, size : number, extension : string) { 
-        super(bytes, size, extension);
+    aspectRatio : number;
+
+    constructor(params : ImageBinaryParams) { 
+        super(params);
+        this.aspectRatio = params.aspectRatio;
     }
 }
 
@@ -72,3 +97,4 @@ function getMimeType(extension: string): string {
 function getExtensionType(mime : string) : string {
     return EXTENSIONS[mime.toLowerCase()];
 }
+

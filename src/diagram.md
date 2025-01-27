@@ -126,7 +126,7 @@ classDiagram
         +registerResource(vaultKey: string, entryKey: string, media: MediaBinary) Promise
     }
 
-    %% Relationships
+    %% Inheritance Relationships (Existing)
     FileBinary <|-- MediaBinary
     MediaBinary <|-- ImageBinary
     FileBinaryDto <|-- MediaBinaryDto
@@ -148,4 +148,20 @@ classDiagram
     MediaVault <|-- ImageDirectoryVault
     
     DirectoryIndexDirectory <|-- FileDatabase
+
+    %% Composition Relationships (Strong "has-a")
+    FileDatabase *-- MediaVault : contains
+    IndexDirectory *-- Index : owns
+    DirectoryIndex *-- DirectoryIndexData : owns
+    VaultIndex *-- VaultIndexData : owns
+
+    %% Aggregation Relationships (Weak "has-a")
+    MediaVault o-- MediaBinary : manages
+    ImageDirectoryVault o-- ImageBinary : manages
+
+    %% Association Relationships (Uses)
+    FileBinary --> FileBinaryDto : converts to
+    MediaBinary --> MediaBinaryDto : converts to
+    ImageBinary --> ImageBinaryDto : converts to
+    IndexFactory --> Index : creates
 ```

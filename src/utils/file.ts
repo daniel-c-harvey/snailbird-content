@@ -36,7 +36,7 @@ export async function fetchFile(mediaPath : string) : Promise<FileBinary> {
         offset += data.byteLength;
     });
 
-    return new FileBinary(bytes, bytes.length);
+    return new FileBinary({buffer: bytes, size: bytes.length});
 }
 
 export async function putFile(mediaPath : string, buffer : Buffer) {

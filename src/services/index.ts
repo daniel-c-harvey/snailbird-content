@@ -1,5 +1,5 @@
 import path from "path";
-import { DirectoryIndex, Index, IndexData, VaultIndex } from "../models/fileDatabase.models.js";
+import { DirectoryIndex, EntryKey, Index, IndexData, MetaData, VaultIndex } from "../models/fileDatabase.models.js";
 import { putObject } from "../utils/file.js";
 import { makeVaultDirectory } from "../utils/file.js";
 import { fetchObject } from "../utils/file.js";
@@ -66,7 +66,7 @@ export abstract class IndexDirectory<TIndex extends Index> extends AbstractIndex
         this.index = index;
     }    
 
-    protected getIndexEntries() : string[] {
+    protected getIndexEntries() : EntryKey[] {
         return this.index.getEntries();
     }
 
@@ -74,14 +74,14 @@ export abstract class IndexDirectory<TIndex extends Index> extends AbstractIndex
         return this.index.getEntriesSize();
     }
 
-    hasIndexEntry(entryKey : string) : boolean {
+    hasIndexEntry(entryKey : EntryKey) : boolean {
         return this.index.hasEntry(entryKey);
     }    
 }
 
 export class DirectoryIndexDirectory extends IndexDirectory<DirectoryIndex> {
     
-    protected async addToIndex(entryKey: string) {
+    protected async addToIndex(entryKey: EntryKey) {
         if (this.index !== undefined) {
             this.index.putEntry(entryKey);
             await this.saveIndex(this.index);
@@ -91,9 +91,9 @@ export class DirectoryIndexDirectory extends IndexDirectory<DirectoryIndex> {
 
 export class VaultIndexDirectory extends IndexDirectory<VaultIndex> {
     
-    protected async addToIndex(entryKey: string, mediaPath : string) {
+    protected async addToIndex(entryKey: EntryKey, metaData : MetaData) {
         if (this.index !== undefined) {
-            this.index.putEntry(entryKey, mediaPath);
+            this.index.putEntry(entryKey, metaData);
             await this.saveIndex(this.index);
         }
     }
