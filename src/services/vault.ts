@@ -1,5 +1,5 @@
 import { extname } from "path";
-import { IndexFactory, VaultIndexDirectory } from "./index.js";
+import { IndexFactory, IndexType, VaultIndexDirectory } from "./index.js";
 import { FileBinary, ImageBinary, ImageBinaryParams, MediaBinary, MediaBinaryParams } from "../models/mediaModel.js";
 import { EntryKey, ImageMetaData, MetaData, VaultIndex, VaultIndexData } from "../models/fileDatabase.models.js";
 import { fetchFile, putFile } from "../utils/file.js";
@@ -9,7 +9,7 @@ import { FileBinaryFactory, MediaMetaDataMap, MediaParamsFactory, MediaVaultPara
 export abstract class MediaVault extends VaultIndexDirectory {
 
     protected constructor(rootPath : string, index : VaultIndex) {
-        super(rootPath, index);
+        super(rootPath, IndexType.Vault, index);
     }
     
     protected getMediaKey(entryKey : string, extension : string) : string {
@@ -35,7 +35,7 @@ export abstract class MediaVault extends VaultIndexDirectory {
         if (this.hasIndexEntry(entryKey)) {
             const metaData = this.index.getEntry(entryKey) as MediaMetaDataMap[T];
             if (metaData !== undefined) {
-                const mediaPath = this.getMediaPathFromMediaKey(metaData.mediaKey);
+                const mediaPath = this.getMediaPathFromEntryKey(metaData.mediaKey, metaData.extension);
                 const fileBinary = await fetchFile(mediaPath);
                 const params = MediaParamsFactory.create<T>(vk, fileBinary, metaData);
                 
@@ -48,7 +48,7 @@ export abstract class MediaVault extends VaultIndexDirectory {
 
 export class ImageDirectoryVault extends MediaVault {
     static async from(rootPath : string) : Promise<ImageDirectoryVault | undefined> {
-        const factory = new IndexFactory<VaultIndex, VaultIndexData>(rootPath, (data) => new VaultIndex(data), (path) => new VaultIndexData(path));
+        const factory = new IndexFactory(rootPath, IndexType.Vault);
         let index = await factory.buildIndex();
 
         if (index !== undefined) {

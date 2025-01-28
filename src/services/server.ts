@@ -5,7 +5,7 @@ import { MediaBinary, MediaBinaryDto } from '../models/mediaModel.js'
 import { FileDatabase } from './fileDatabase.js';
 import { passSecret } from '../utils/secrets.js';
 import { Server as HttpServer } from 'http';
-import { MediaVaultType } from '../models/mediaModelFactory.js';
+import { FileBinaryDtoFactory, FileBinaryFactory, MediaVaultDtoTypeMap, MediaVaultType } from '../models/mediaModelFactory.js';
 import { EntryKey } from '../models/fileDatabase.models.js';
 
 export class Server {
@@ -82,14 +82,21 @@ const viewVaultGET = async function(req : Express.Request, res : Express.Respons
 
     if (mediaKey !== undefined && mediaKey !== '' && mediaKey.length > 0) {
         try {
-            let image = await fileDB.loadResource(vaultKey.type, vaultKey, {key: mediaKey, type: vaultKey.type});
-    
-            if (image !== undefined && Buffer.isBuffer(image.buffer)) 
+            const media = await fileDB.loadResource(vaultKey.type, vaultKey, {key: mediaKey, type: vaultKey.type});
+            if (media !== undefined && Buffer.isBuffer(media.buffer)) 
             {
-                res.type('png');
-                res.send(image.buffer);
-                res.end(null, 'binary');
-                return;
+                let dto = FileBinaryDtoFactory.from(vaultKey.type, media);
+                let json = JSON.stringify(dto);
+                
+                if (json?.length > 0) {
+                    res.type('application/json');
+                    res.statusCode = 200;
+                    res.end(json, 'utf-8');
+                    return;
+                } else {
+                    FiveHundred(res, 'Failed to encode response object');
+                    return;
+                }
             }
         } catch (error) {
             FiveHundred(res, error);
@@ -105,10 +112,10 @@ const managerVaultGET = async function(req : Express.Request, res : Express.Resp
 
     if (mediaKey !== undefined && mediaKey !== '' && mediaKey.length > 0) {
         try {
-            let media = await fileDB.loadResource(vaultKey.type, vaultKey, {key: mediaKey, type: vaultKey.type});
+            const media = await fileDB.loadResource(vaultKey.type, vaultKey, {key: mediaKey, type: vaultKey.type});
             if (media !== undefined && Buffer.isBuffer(media.buffer)) 
             {
-                let dto = new MediaBinaryDto(media);
+                let dto = FileBinaryDtoFactory.from(vaultKey.type, media);
                 let json = JSON.stringify(dto);
                 
                 if (json?.length > 0) {
@@ -132,14 +139,14 @@ const managerVaultGET = async function(req : Express.Request, res : Express.Resp
 
 const managerVaultPOST = async function(req : Express.Request, res : Express.Response, fileDB : FileDatabase, vaultKey : EntryKey) {
     let key = req.params['entryKey'];
-    let dto = req.body as MediaBinaryDto;
+    let dto = req.body as MediaVaultDtoTypeMap[typeof vaultKey.type];
 
     if (key !== undefined && key !== '' && 
         key.length > 0 && dto !== undefined &&
         dto.size > 0 && dto.base64 !== undefined
     ) {
         try {
-            let media = MediaBinary.from(dto);
+            let media = FileBinaryFactory.from(vaultKey.type, dto);
             if (await fileDB.registerResource(vaultKey.type, vaultKey, {key: key, type: vaultKey.type}, media)) {
                 res.type('application/json');
                 res.statusCode = 200;

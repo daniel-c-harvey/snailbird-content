@@ -5,6 +5,7 @@ import { getMediaBinary, getMediaBinaryDto, testPngBytes } from "./data.js";
 import { fetchJSON } from "../src/utils/file.js";
 import { APIKeySet } from "../src/utils/secrets.js";
 import { MediaVaultType } from "../src/models/mediaModelFactory.js";
+import { ImageBinaryDto } from "../src/models/mediaModel.js";
 
 export default async function runServerTests(fileDatabaseRootPath : string, port : number) {
     await test('Server passes all units', async (t) => {
@@ -26,15 +27,15 @@ export default async function runServerTests(fileDatabaseRootPath : string, port
                 await t.test('View API responds to /img/test', async (t) => {
                     // Act
                     let res = await fetch(baseURL + '/img/test');
-                    let blob = (await res.blob());
-                    let bytes = Buffer.from(await blob.arrayBuffer());
-
+                    const media = await res.json() as ImageBinaryDto;
+                        
                     // Assert
-                    assert.strictEqual(bytes.byteLength > 0, true, 'Image size is not above 0');
-                    assert.strictEqual(bytes.byteLength, testPngBytes.length, 'Number of bytes differs');
-                    for (let i = 0; i < bytes.byteLength; i++) {
-                        assert.strictEqual(bytes[i], testPngBytes[i], `Byte index ${i} are not equal`); // todo for loop to compare byte points
-                    }
+                    assert.strictEqual(res.status, 200);
+                    assert.strictEqual(media === undefined, false, 'ImageBinaryDto is undefined');
+                    assert.strictEqual(media.size > 0, true, 'ImageBinaryDto size is not above 0');
+                    assert.strictEqual(media.size, testPngBytes.length, 'ImageBinaryDto size is not equal to testPngBytes length');
+                    assert.strictEqual(media.mime, 'image/png', 'ImageBinaryDto mime is not image/png');
+                    assert.strictEqual(media.aspectRatio, 1.0, 'ImageBinaryDto aspectRatio is not 1.0');
                 });
             });
 
@@ -156,11 +157,15 @@ export default async function runServerTests(fileDatabaseRootPath : string, port
                     await t.test('Manage API GET with good auth header on valid endpoint -> 200', async (t) => {
                         // Act
                         const res = await fetch(baseURL + '/manage/img/test', req);
-                        const bytes = Buffer.from(await res.arrayBuffer());
+                        const media = await res.json() as ImageBinaryDto;
                         
                         // Assert
                         assert.strictEqual(res.status, 200);
-                        assert.strictEqual(bytes.length > 0, true, 'Body was empty');
+                        assert.strictEqual(media === undefined, false, 'ImageBinaryDto is undefined');
+                        assert.strictEqual(media.size > 0, true, 'ImageBinaryDto size is not above 0');
+                        assert.strictEqual(media.size, testPngBytes.length, 'ImageBinaryDto size is not equal to testPngBytes length');
+                        assert.strictEqual(media.mime, 'image/png', 'ImageBinaryDto mime is not image/png');
+                        assert.strictEqual(media.aspectRatio, 1.0, 'ImageBinaryDto aspectRatio is not 1.0');
                     });
                 });
             });

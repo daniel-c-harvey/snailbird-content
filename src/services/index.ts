@@ -1,36 +1,67 @@
 import path from "path";
-import { DirectoryIndex, EntryKey, Index, IndexData, MetaData, VaultIndex } from "../models/fileDatabase.models.js";
+import { DirectoryIndex, DirectoryIndexData, EntryKey, Index, IndexData, MetaData, VaultIndex, VaultIndexData } from "../models/fileDatabase.models.js";
 import { putObject } from "../utils/file.js";
 import { makeVaultDirectory } from "../utils/file.js";
 import { fetchObject } from "../utils/file.js";
 
-abstract class AbstractIndexContainer<TIndex extends Index>  {
+export enum IndexType {
+    Directory,
+    Vault
+}
+
+export type IndexTypeMap = {
+    [IndexType.Directory]: DirectoryIndex,
+    [IndexType.Vault]: VaultIndex
+}
+
+export type IndexDataMap = {
+    [IndexType.Directory]: DirectoryIndexData,
+    [IndexType.Vault]: VaultIndexData
+}
+
+type IndexDataBuilder<T extends IndexType> = (path: string) => IndexDataMap[T];
+
+const indexDataBuilder: { [T in IndexType]: IndexDataBuilder<T> } = {
+    [IndexType.Directory]: (path: string): DirectoryIndexData => new DirectoryIndexData(path),
+    [IndexType.Vault]: (path: string): VaultIndexData => new VaultIndexData(path)
+};
+
+type IndexContainerBuilder<T extends IndexType> = (data: IndexDataMap[T]) => IndexTypeMap[T];
+
+const indexContainerBuilder: { [T in IndexType]: IndexContainerBuilder<T> } = {
+    [IndexType.Directory]: (data: DirectoryIndexData) => new DirectoryIndex(data),
+    [IndexType.Vault]: (data: VaultIndexData) => new VaultIndex(data)
+};
+
+const indexDataConverter: { [T in IndexType]: (index: IndexTypeMap[T]) => IndexDataMap[T] } = {
+    [IndexType.Directory]: (index: DirectoryIndex) => DirectoryIndexData.fromIndex(index),
+    [IndexType.Vault]: (index: VaultIndex) => VaultIndexData.fromIndex(index)
+};
+
+abstract class AbstractIndexContainer<T extends IndexType>  {
+    protected type: T;
     rootPath : string;
 
-    constructor(path : string) {
+    constructor(path : string, type: T) {
         this.rootPath = path;
+        this.type = type;
     }
     
     getKey() : string {
         return path.basename(this.rootPath);
     }
     
-    protected async saveIndex(index: TIndex) {
-        await putObject(this.rootPath + '/index', index);
+    protected async saveIndex(index: IndexTypeMap[T]) {
+        await putObject(this.rootPath + '/index', indexDataConverter[this.type](index));
     }
 }
 
-export class IndexFactory<TIndex extends Index, TData extends IndexData> extends AbstractIndexContainer<TIndex> {
-    private containerFactory : (data : TData) => TIndex;
-    private indexFactory : (path : string) => TData;
-
-    constructor(path : string, containerFactory : (data : TData) => TIndex, indexFactory : (path : string) => TData) {
-        super(path);
-        this.containerFactory = containerFactory;
-        this.indexFactory = indexFactory;
+export class IndexFactory<T extends IndexType> extends AbstractIndexContainer<T> {
+    constructor(path: string, type: T) {
+        super(path, type);
     }
 
-    async buildIndex() : Promise<TIndex | undefined> {
+    async buildIndex(): Promise<IndexTypeMap[T] | undefined> {
         try {
             return await this.loadOrCreateIndex();
         } catch (error) {
@@ -38,18 +69,17 @@ export class IndexFactory<TIndex extends Index, TData extends IndexData> extends
         }
     }
 
-    protected async loadOrCreateIndex() : Promise<TIndex>
-    {
+    protected async loadOrCreateIndex(): Promise<IndexTypeMap[T]> {
         try {
-            return this.containerFactory(await fetchObject(this.rootPath + '/index'));
+            return indexContainerBuilder[this.type](await fetchObject(this.rootPath + '/index')) as IndexTypeMap[T];
         } catch (error) {
             return await this.createIndex();
         }
     }
 
-    protected async createIndex() : Promise<TIndex> {
-        const data = this.indexFactory(this.rootPath);
-        const index = this.containerFactory(data);
+    protected async createIndex(): Promise<IndexTypeMap[T]> {
+        const data = indexDataBuilder[this.type](this.rootPath) as IndexDataMap[T];
+        const index = indexContainerBuilder[this.type](data) as IndexTypeMap[T];
 
         await makeVaultDirectory(this.rootPath);
         await this.saveIndex(index);
@@ -58,11 +88,11 @@ export class IndexFactory<TIndex extends Index, TData extends IndexData> extends
     }
 }
 
-export abstract class IndexDirectory<TIndex extends Index> extends AbstractIndexContainer<TIndex> {
-    protected index : TIndex;
+export abstract class IndexDirectory<T extends IndexType> extends AbstractIndexContainer<T> {
+    protected index : IndexTypeMap[T];
 
-    protected constructor(rootPath : string, index : TIndex) {
-        super(rootPath);
+    protected constructor(rootPath : string, type: T, index : IndexTypeMap[T]) {
+        super(rootPath, type);
         this.index = index;
     }    
 
@@ -79,7 +109,7 @@ export abstract class IndexDirectory<TIndex extends Index> extends AbstractIndex
     }    
 }
 
-export class DirectoryIndexDirectory extends IndexDirectory<DirectoryIndex> {
+export class DirectoryIndexDirectory extends IndexDirectory<IndexType.Directory> {
     
     protected async addToIndex(entryKey: EntryKey) {
         if (this.index !== undefined) {
@@ -89,7 +119,7 @@ export class DirectoryIndexDirectory extends IndexDirectory<DirectoryIndex> {
     }
 }
 
-export class VaultIndexDirectory extends IndexDirectory<VaultIndex> {
+export class VaultIndexDirectory extends IndexDirectory<IndexType.Vault> {
     
     protected async addToIndex(entryKey: EntryKey, metaData : MetaData) {
         if (this.index !== undefined) {
