@@ -23,6 +23,13 @@ export class FileBinary {
         this.buffer = params.buffer;
         this.size = params.size;
     }
+
+    static from(other : FileBinaryDto) : FileBinary {
+        return {
+            buffer : Buffer.from(other.base64, 'base64'),
+            size : other.size
+        }
+    }
 }
 
 export class MediaBinaryDto extends FileBinaryDto {
@@ -46,10 +53,9 @@ export class MediaBinary extends FileBinary {
         this.extension = params.extension;
     }
 
-    static from(other : MediaBinaryDto) {
+    static override from(other : MediaBinaryDto) : MediaBinary {
         return {
-            buffer : Buffer.from(other.base64, 'base64'),
-            size : other.size,
+            ...super.from(other),
             extension : getExtensionType(other.mime)
         }
     }
@@ -74,6 +80,13 @@ export class ImageBinary extends MediaBinary {
     constructor(params : ImageBinaryParams) { 
         super(params);
         this.aspectRatio = params.aspectRatio;
+    }
+
+    static override from(other : ImageBinaryDto) : ImageBinary {
+        return {
+            ...super.from(other),
+            aspectRatio : other.aspectRatio
+        }
     }
 }
 

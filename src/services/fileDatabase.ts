@@ -1,15 +1,15 @@
-import { MediaBinary } from '../models/mediaModel.js';
-import { DirectoryIndexDirectory, IndexFactory } from './index.js';
+import { DirectoryIndexDirectory, IndexFactory, IndexType } from './index.js';
 import { MediaVault, ImageDirectoryVault } from './vault.js';
-import { DirectoryIndex, DirectoryIndexData, EntryKey } from '../models/fileDatabase.models.js';
+import { DirectoryIndex, EntryKey } from '../models/fileDatabase.models.js';
 import { MediaVaultType, MediaVaultTypeMap } from '../models/mediaModelFactory.js';
+import { StructuralMap } from '../utils/StructuralMap.js';
 
 export class FileDatabase extends DirectoryIndexDirectory
 {
-    private vaults : Map<EntryKey, MediaVault>
+    private vaults : StructuralMap<EntryKey, MediaVault>
     
     static async from(rootPath : string) : Promise<FileDatabase | undefined> {
-        const factory = new IndexFactory<DirectoryIndex, DirectoryIndexData>(rootPath, (data) => new DirectoryIndex(data), (path) => new DirectoryIndexData(path));
+        const factory = new IndexFactory(rootPath, IndexType.Directory);
         let rootIndex = await factory.buildIndex();
         
         if (rootIndex !== undefined) {
@@ -23,8 +23,8 @@ export class FileDatabase extends DirectoryIndexDirectory
 
     protected constructor(rootPath : string, index : DirectoryIndex)
     {
-        super(rootPath, index);
-        this.vaults = new Map<EntryKey, MediaVault>();
+        super(rootPath, IndexType.Directory, index);
+        this.vaults = new StructuralMap<EntryKey, MediaVault>();
     }
 
     protected async initVaults() {
@@ -35,10 +35,10 @@ export class FileDatabase extends DirectoryIndexDirectory
     
     protected async initVault(vaultKey : EntryKey) {
         const path = this.rootPath + '/' + vaultKey.key;
-        let dvault = await ImageDirectoryVault.from(path);
+        let directoryVault = await ImageDirectoryVault.from(path);
         
-        if (dvault !== undefined) {
-            this.vaults.set(vaultKey, dvault);
+        if (directoryVault !== undefined) {
+            this.vaults.set(vaultKey, directoryVault);
         }
     }
 
@@ -53,10 +53,10 @@ export class FileDatabase extends DirectoryIndexDirectory
     async createVault(vaultKey : EntryKey) {
         try {
             let path = this.rootPath + '/' + vaultKey.key;
-            let dvault = await ImageDirectoryVault.from(path);
+            let directoryVault = await ImageDirectoryVault.from(path);
 
-            if (dvault !== undefined) {
-                this.vaults.set(vaultKey, dvault);
+            if (directoryVault !== undefined) {
+                this.vaults.set(vaultKey, directoryVault);
                 await this.addToIndex(vaultKey);
             }
         } catch (e) {
@@ -76,9 +76,9 @@ export class FileDatabase extends DirectoryIndexDirectory
 
     async registerResource<T extends MediaVaultType>(vk : T, vaultKey : EntryKey, entryKey: EntryKey, media : MediaVaultTypeMap[T]) : Promise<boolean> {
         try {
-            let dvault = this.vaults.get(vaultKey);
-            if (dvault !== undefined) {
-                await dvault.addEntry(vk, entryKey, media)
+            let directoryVault = this.vaults.get(vaultKey);
+            if (directoryVault !== undefined) {
+                await directoryVault.addEntry(vk, entryKey, media)
                 return true;
             }
         } catch (e) { }
